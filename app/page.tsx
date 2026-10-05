@@ -43,7 +43,8 @@ export default function Home() {
   const [dbLeads,setDbLeads] = useState<LeadRow[]>([]);
   const [planCode,setPlanCode] = useState("free");
   const [searchUsage,setSearchUsage] = useState<{used:number;limit:number|null}>({used:0,limit:3});
-  const [aiUsage,setAiUsage] = useState<{used:number;limit:number|null}>({used:0,limit:5});\n  const [pipeline,setPipeline] = useState<Record<string,string>>({});
+  const [aiUsage,setAiUsage] = useState<{used:number;limit:number|null}>({used:0,limit:5});
+  const [pipeline,setPipeline] = useState<Record<string,string>>({});
   const [revenue,setRevenue] = useState(0);
 
   const notify = (message:string) => { setToast(message); window.setTimeout(() => setToast(""),2600); };
