@@ -388,3 +388,22 @@ alter table public.gateway_settings enable row level security;
 drop policy if exists gateway_admin_all on public.gateway_settings;
 create policy gateway_admin_all on public.gateway_settings for all to authenticated using (public.is_admin()) with check (public.is_admin());
 insert into public.gateway_settings(id) values(true) on conflict(id) do nothing;
+
+
+-- Funções administrativas finais: limites e novo cadastro de admin
+create or replace function public.plan_limits(p_plan text)
+returns table(search_limit integer, companies_per_search integer, ai_limit integer, renewable boolean)
+language sql stable set search_path=public
+as $$ select ps.search_limit,ps.companies_per_search,ps.ai_limit,ps.renewable from public.plan_settings ps where ps.plan_code=coalesce(p_plan,'free') limit 1 $$;
+
+create or replace function public.handle_new_user()
+returns trigger language plpgsql security definer set search_path=public
+as $$
+declare v_role text := case when lower(coalesce(new.email,''))=lower('willianaaquinomiranda@gmail.com') then 'admin' else 'user' end;
+begin
+  insert into public.profiles(id,full_name,role) values(new.id,new.raw_user_meta_data->>'full_name',v_role) on conflict(id) do nothing;
+  insert into public.subscriptions(user_id,plan_code,status) values(new.id,case when v_role='admin' then 'infinity' else 'free' end,'active') on conflict(user_id) do nothing;
+  return new;
+end;
+$$;
+revoke execute on function public.handle_new_user() from public,anon,authenticated;
