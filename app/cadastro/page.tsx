@@ -36,6 +36,6 @@ export default function SignupPage() {
       {error && <div className="auth-error">{error}</div>}{message && <div className="auth-success">{message}</div>}
       <button className="primary auth-submit" disabled={loading}>{loading?"Criando...":"Criar minha conta"} <ArrowRight size={15}/></button>
     </form>
-    <div className="auth-links"><span>Já tem conta?</span><Link href="/login">Entrar</Link></div>
+    <div className="social-proof"><div className="social-proof-head"><div><span className="proof-kicker">EXPERIÊNCIA PROGRESSO ACHA</span><strong>Feito para quem quer prospectar mais.</strong></div><div className="proof-rating">★★★★★<small>Exemplos demonstrativos</small></div></div><div className="testimonial-grid"><article><p>“Uma forma muito mais organizada de transformar pesquisa em oportunidades comerciais.”</p><span>Empreendedor • exemplo</span></article><article><p>“O funil ajuda a não perder o timing de cada contato e deixa a operação muito mais clara.”</p><span>Profissional de vendas • exemplo</span></article></div></div><div className="auth-links"><span>Já tem conta?</span><Link href="/login">Entrar</Link></div>
   </section></main>;
 }
