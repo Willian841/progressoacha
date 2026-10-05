@@ -66,7 +66,7 @@ export default function Home() {
         setUserName(data.user.user_metadata?.full_name || data.user.email?.split("@")[0] || "Usuário");
         setUserEmail(data.user.email || "");
         const { data: profile } = await supabase.from("profiles").select("plan_code").eq("id", data.user.id).maybeSingle();
-        const { data: adminRows } = await supabase.rpc("is_admin");
+        const { data: adminRows } = await (supabase as any).rpc("is_admin");
         const admin = data.user.email?.toLowerCase() === "willianaaquinomiranda@gmail.com" && adminRows === true;
         setIsAdmin(admin);
         const currentPlan = profile?.plan_code || "free";
