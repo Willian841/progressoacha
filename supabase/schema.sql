@@ -351,3 +351,40 @@ grant execute on function public.consume_ai() to authenticated;
 revoke execute on function public.handle_new_user() from public;
 revoke execute on function public.handle_new_user() from anon;
 revoke execute on function public.handle_new_user() from authenticated;
+
+
+-- Administração e configuração futura de pagamentos
+alter table public.profiles add column if not exists role text not null default 'user';
+DO $$ BEGIN alter table public.profiles add constraint profiles_role_check check (role in ('user','admin')); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+create table if not exists public.plan_settings (
+  plan_code text primary key check (plan_code in ('free','basic','pro','infinity')),
+  name text not null,
+  price numeric(10,2) not null default 0 check (price >= 0),
+  search_limit integer,
+  companies_per_search integer not null default 40,
+  ai_limit integer,
+  renewable boolean not null default true,
+  updated_at timestamptz not null default now()
+);
+alter table public.plan_settings enable row level security;
+drop policy if exists plan_settings_read on public.plan_settings;
+create policy plan_settings_read on public.plan_settings for select to authenticated using (true);
+drop policy if exists plan_settings_admin_update on public.plan_settings;
+create policy plan_settings_admin_update on public.plan_settings for update to authenticated using (public.is_admin()) with check (public.is_admin());
+insert into public.plan_settings(plan_code,name,price,search_limit,companies_per_search,ai_limit,renewable) values ('free','Gratuito',0,3,20,5,false),('basic','Básico',24.90,60,30,20,true),('pro','Pro',49.90,300,40,200,true),('infinity','Infinity',59.90,null,40,1000,true) on conflict(plan_code) do nothing;
+create or replace function public.is_admin() returns boolean language sql stable security invoker set search_path=public as $$ select exists(select 1 from public.profiles where id=(select auth.uid()) and role='admin') $$;
+revoke all on function public.is_admin() from public;
+grant execute on function public.is_admin() to authenticated;
+create table if not exists public.gateway_settings (
+  id boolean primary key default true check (id = true),
+  provider text not null default 'none' check (provider in ('none','stripe','mercado_pago','other')),
+  mode text not null default 'test' check (mode in ('test','live')),
+  public_key text,
+  webhook_url text,
+  enabled boolean not null default false,
+  updated_at timestamptz not null default now()
+);
+alter table public.gateway_settings enable row level security;
+drop policy if exists gateway_admin_all on public.gateway_settings;
+create policy gateway_admin_all on public.gateway_settings for all to authenticated using (public.is_admin()) with check (public.is_admin());
+insert into public.gateway_settings(id) values(true) on conflict(id) do nothing;
