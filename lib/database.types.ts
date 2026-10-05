@@ -386,6 +386,20 @@ export type Database = {
           used: number
         }[]
       }
+      admin_user_overview: {
+        Row: {
+          id: string
+          email: string | null
+          full_name: string | null
+          role: string
+          plan_code: string
+          subscription_status: string | null
+          provider: string | null
+          current_period_end: string | null
+          created_at: string
+        }
+        Relationships: []
+      }
       plan_limits: {
         Args: { p_plan: string }
         Returns: {
