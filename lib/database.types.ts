@@ -299,6 +299,12 @@ export type Database = {
         }
         Relationships: []
       }
+      admin_audit_log: {
+        Row: { id: string; admin_user_id: string; action: string; target_type: string; target_id: string | null; details: Json; created_at: string }
+        Insert: { id?: string; admin_user_id: string; action: string; target_type: string; target_id?: string | null; details?: Json; created_at?: string }
+        Update: { id?: string; admin_user_id?: string; action?: string; target_type?: string; target_id?: string | null; details?: Json; created_at?: string }
+        Relationships: []
+      }
       billing_events: {
         Row: { id: string; provider: string; event_id: string; event_type: string; payload: Json; processed: boolean; created_at: string; processed_at: string | null }
         Insert: { id?: string; provider: string; event_id: string; event_type: string; payload?: Json; processed?: boolean; created_at?: string; processed_at?: string | null }
