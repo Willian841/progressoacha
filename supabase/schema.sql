@@ -44,7 +44,7 @@ create table if not exists public.activities (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users(id) on delete cascade,
   lead_id uuid references public.leads(id) on delete cascade,
-  type text not null check (type in ('note','call','whatsapp','meeting','task')),
+  type text not null check (type in ('note','call','whatsapp','meeting','task','ai_approach')),
   content text,
   scheduled_at timestamptz,
   completed_at timestamptz,
