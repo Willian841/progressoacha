@@ -4,34 +4,45 @@ SaaS de prospecção comercial, CRM e vendas com foco em identificação de opor
 
 ## Estado atual
 
-A primeira fundação visual e de navegação já está publicada na branch main.
+A aplicação já está conectada a um projeto Supabase e possui autenticação, persistência de CRM, agenda, resultados, receita, controle de uso por plano e proteção de sessão.
 
 ### Incluído
-- Dashboard premium em Dark Mode
-- Sidebar responsiva
-- Buscar Leads com busca local, métricas e status de site
-- Minha Prospecção com estágios de funil
-- Planos Gratuito, Básico, Pro e Infinity
-- Feedback visual para ações
-- Design responsivo
-- Login, cadastro, recuperação e redefinição de senha preparados para Supabase
-- Logout conectado ao Supabase
-- Base de componentes preparada para integração com dados persistentes
 
-### Próximas camadas
-1. Conectar um projeto Supabase e configurar variáveis de ambiente
-2. Aplicar `supabase/schema.sql` no projeto Supabase
-3. API de leads e filtros avançados
-4. Persistência do CRM e agenda
-5. IA para abordagens
-6. WhatsApp
-7. Pagamentos Pix/cartão e webhooks
-8. Receita, resultados e diagnóstico comercial
-9. Integração com provedores externos
+- Dashboard premium responsivo em Dark Mode + preferência de tema
+- Login, cadastro, recuperação e redefinição de senha
+- Sessão Supabase com proteção por Proxy
+- Buscar Leads com filtros de segmento, UF, cidade, site e score
+- Controle server-side de limite de buscas por plano
+- Minha Prospecção com estágios persistentes
+- WhatsApp com mensagem comercial
+- Abordagens comerciais registradas na Agenda
+- Controle server-side de uso de IA
+- Agenda com atividades, vínculo a lead e conclusão
+- Resultados do funil comercial
+- Receita com histórico de vendas
+- Perfil e alteração de senha
+- Preferência de idioma/aparência salva no dispositivo
+- RLS e políticas de propriedade no Supabase
+- Índices para consultas por usuário, agenda, CRM e vendas
+- Planos Gratuito, Básico, Pro e Infinity
+
+## Configuração
+
+Crie as variáveis de ambiente:
+
+```env
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=
+NEXT_PUBLIC_SUPABASE_ANON_KEY=
+```
+
+A chave publishable é a preferida. A chave anon permanece como compatibilidade.
+
+Antes do deploy, confirme as variáveis no provedor de hospedagem e valide o fluxo completo de autenticação.
 
 ## Regras comerciais
 
-Os limites dos planos devem ser aplicados no servidor, nunca somente na interface.
+Os limites são aplicados no banco por RPCs transacionais, não somente pela interface.
 
 | Plano | Buscas | Empresas/busca | IA/mês |
 |---|---:|---:|---:|
@@ -39,3 +50,13 @@ Os limites dos planos devem ser aplicados no servidor, nunca somente na interfac
 | Básico | 60/mês | 30 | 20 |
 | Pro | 300/mês | 40 | 200 |
 | Infinity | ilimitadas | 40 | 1000 |
+
+## Próximas integrações de produção
+
+1. Checkout real e webhooks para ativar/trocar planos.
+2. Provedor real de leads (Google Maps/API ou fonte licenciada).
+3. Provedor de IA real para diagnóstico e abordagens personalizadas.
+4. Melhorias finais de analytics históricos e notificações.
+5. QA de build/deploy com as variáveis de produção configuradas.
+
+As integrações externas não devem usar chaves secretas no cliente. Segredos de pagamento, IA e provedores de leads devem ficar no servidor/Edge Functions.
