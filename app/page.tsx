@@ -41,6 +41,7 @@ export default function Home() {
   const [authReady,setAuthReady] = useState(false);
   const [userName,setUserName] = useState("Willian");
   const [dbLeads,setDbLeads] = useState<LeadRow[]>([]);\n  const [pipeline,setPipeline] = useState<Record<string,string>>({});
+  const [revenue,setRevenue] = useState(0);
 
   const notify = (message:string) => { setToast(message); window.setTimeout(() => setToast(""),2600); };
   useEffect(() => {
@@ -64,6 +65,8 @@ export default function Home() {
           const saved:Record<string,string> = {};
           pipelineRows?.forEach(row => { saved[row.lead_id] = dbToStage[row.stage] || "Selecionado"; });
           setPipeline(saved);
+          const { data:salesRows } = await supabase.from("sales").select("amount").eq("status","won");
+          setRevenue((salesRows || []).reduce((total,row) => total + Number(row.amount || 0), 0));
         }
       } catch (error) { console.error(error); }
       finally { if (mounted) setAuthReady(true); }
@@ -94,7 +97,7 @@ export default function Home() {
     <main className="main">
       <header><button className="hamb" onClick={()=>setMobile(true)}><Menu/></button><div className="crumb">Workspace <ChevronRight size={13}/> <b>{active}</b></div><div className="actions"><button><Globe2 size={17}/></button><button className="notify"><MessageCircle size={17}/><i/></button><div className="avatar">{userName.slice(0,2).toUpperCase()}</div></div></header>
       <div className="content">
-        {active==="Dashboard" && <Dashboard userName={userName} leads={dbLeads} onSearch={()=>setActive("Buscar Leads")} notify={notify}/>}
+        {active==="Dashboard" && <Dashboard userName={userName} leads={dbLeads} pipeline={pipeline} revenue={revenue} onSearch={()=>setActive("Buscar Leads")} notify={notify}/>}
         {active==="Buscar Leads" && <Leads leads={dbLeads} query={query} setQuery={setQuery} notify={notify}/>}
         {active==="Minha Prospecção" && <Pipeline stage={stage} setStage={setStage} pipeline={pipeline} setPipeline={setPipeline} leads={dbLeads} notify={notify}/>}
         {active==="Planos" && <Plans notify={notify}/>}
@@ -109,9 +112,14 @@ function Header({eyebrow,title,text,action}:{eyebrow:string,title:string,text:st
   return <div className="heading"><div><div className="eyebrow"><span className="pulse"/> {eyebrow}</div><h1>{title}</h1><p>{text}</p></div>{action}</div>
 }
 
-function Dashboard({userName,leads,onSearch,notify}:{userName:string,leads:LeadRow[],onSearch:()=>void,notify:(s:string)=>void}) {
+function Dashboard({userName,leads,pipeline,revenue,onSearch,notify}:{userName:string,leads:LeadRow[],pipeline:Record<string,string>,revenue:number,onSearch:()=>void,notify:(s:string)=>void}) {
   return <><Header eyebrow="VISÃO GERAL" title={`Bom dia, ${userName} ✦`} text="Transforme oportunidades em conversas e conversas em vendas." action={<button className="primary" onClick={onSearch}><Search size={16}/> Buscar novos leads</button>}/>
-    <div className="stats"><Stat icon={Users} label="Leads encontrados" value="1.248" note="+18,4% este mês"/><Stat icon={Target} label="Em prospecção" value="186" note="+32 esta semana"/><Stat icon={TrendingUp} label="Taxa de resposta" value="24,8%" note="+4,2% vs. anterior"/><Stat icon={CircleDollarSign} label="Receita gerada" value="R$ 8.450" note="+21,6% este mês"/></div>
+    <div className="stats">
+    <Stat icon={Users} label="Leads encontrados" value={leads.length.toLocaleString("pt-BR")} note="No seu workspace"/>
+    <Stat icon={Target} label="Em prospecção" value={Object.keys(pipeline).length.toLocaleString("pt-BR")} note="Com estágio salvo"/>
+    <Stat icon={TrendingUp} label="Taxa de resposta" value={`${leads.length ? Math.round((Object.values(pipeline).filter(s=>["Respondeu","Reunião","Proposta","Venda"].includes(s)).length / leads.length) * 100) : 0}%`} note="Baseada no CRM"/>
+    <Stat icon={CircleDollarSign} label="Receita gerada" value={revenue.toLocaleString("pt-BR",{style:"currency",currency:"BRL"})} note="Vendas marcadas como ganhas"/>
+  </div>
     <div className="dashboard-grid"><section className="panel"><div className="panelhead"><div><h2>Atividade comercial</h2><p>Performance dos últimos 30 dias</p></div><button className="select">Últimos 30 dias <ChevronRight size={13}/></button></div><div className="chart"><div className="y"><span>12k</span><span>9k</span><span>6k</span><span>3k</span><span>0</span></div><div className="plot"><div/><div/><div/><div/><svg viewBox="0 0 700 230" preserveAspectRatio="none"><defs><linearGradient id="g" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stopColor="#00f2fe" stopOpacity=".22"/><stop offset="1" stopColor="#00f2fe" stopOpacity="0"/></linearGradient></defs><path d="M0 190 C55 175 65 183 105 155 S160 170 205 135 S260 150 305 112 S365 130 410 95 S470 105 510 70 S580 80 630 45 S675 48 700 25 V230 H0Z" fill="url(#g)"/><path d="M0 190 C55 175 65 183 105 155 S160 170 205 135 S260 150 305 112 S365 130 410 95 S470 105 510 70 S580 80 630 45 S675 48 700 25" fill="none" stroke="#00f2fe" strokeWidth="3"/></svg></div></div><div className="months"><span>01</span><span>05</span><span>10</span><span>15</span><span>20</span><span>25</span><span>30</span></div></section>
     <section className="panel"><div className="panelhead"><div><h2>Oportunidades quentes</h2><p>Maior potencial de conversão</p></div><button className="link" onClick={onSearch}>Ver todos <ArrowUpRight size={13}/></button></div>{dbLeads.slice(0,3).map(l=><div className="opportunity" key={l.id}><div className="company">{l.name[0]}</div><div className="company-info"><b>{l.name}</b><span>{l.segment} · {l.location}</span></div><strong>{l.score}<small>score</small></strong></div>)}</section></div>
     <div className="next"><Sparkles size={19}/><div><b>Seu próximo passo</b><span>Você tem 23 leads sem site prontos para uma abordagem comercial.</span></div><button onClick={()=>notify("23 oportunidades encontradas.")}>Encontrar oportunidades <ArrowUpRight size={14}/></button></div>
