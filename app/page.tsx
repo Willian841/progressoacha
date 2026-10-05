@@ -52,6 +52,23 @@ export default function Home() {
         const { data: rows } = await supabase.from("leads").select("name,segment,city,state,website_status,opportunity_score,phone").order("opportunity_score",{ascending:false}).limit(50);
         if (rows?.length) {
           setDbLeads(rows.map(r => [r.name, r.segment || "Outros", [r.city,r.state].filter(Boolean).join(", "), r.website_status === "found", r.opportunity_score, r.phone || ""] as const));
+        } else {
+          const seed = leads.map(l => ({
+            user_id: data.user.id,
+            name: l[0],
+            segment: l[1],
+            city: l[2].split(", ")[0] || null,
+            state: l[2].split(", ")[1] || null,
+            country: "Brasil",
+            phone: l[5],
+            website_status: l[3] ? "found" : "not_found",
+            opportunity_score: l[4],
+            source: "demo"
+          }));
+          const { data: seeded } = await supabase.from("leads").insert(seed).select("name,segment,city,state,website_status,opportunity_score,phone");
+          if (seeded?.length) {
+            setDbLeads(seeded.map(r => [r.name, r.segment || "Outros", [r.city,r.state].filter(Boolean).join(", "), r.website_status === "found", r.opportunity_score, r.phone || ""] as const));
+          }
         }
       } catch (error) {
         console.error(error);
