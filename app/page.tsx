@@ -101,7 +101,10 @@ export default function Home() {
         {active==="Buscar Leads" && <Leads leads={dbLeads} query={query} setQuery={setQuery} notify={notify}/>}
         {active==="Minha Prospecção" && <Pipeline stage={stage} setStage={setStage} pipeline={pipeline} setPipeline={setPipeline} leads={dbLeads} notify={notify}/>}
         {active==="Planos" && <Plans notify={notify}/>}
-        {["Agenda","Resultados","Receita","Configurações"].includes(active) && <Coming title={active}/>}
+        {active==="Agenda" && <Agenda notify={notify}/>}
+        {active==="Resultados" && <Results leads={dbLeads} pipeline={pipeline}/>}
+        {active==="Receita" && <Revenue revenue={revenue} notify={notify}/>}
+        {active==="Configurações" && <Coming title={active}/>} 
       </div>
     </main>
     {toast && <div className="toast"><Check size={16}/>{toast}</div>}
@@ -121,8 +124,8 @@ function Dashboard({userName,leads,pipeline,revenue,onSearch,notify}:{userName:s
     <Stat icon={CircleDollarSign} label="Receita gerada" value={revenue.toLocaleString("pt-BR",{style:"currency",currency:"BRL"})} note="Vendas marcadas como ganhas"/>
   </div>
     <div className="dashboard-grid"><section className="panel"><div className="panelhead"><div><h2>Atividade comercial</h2><p>Performance dos últimos 30 dias</p></div><button className="select">Últimos 30 dias <ChevronRight size={13}/></button></div><div className="chart"><div className="y"><span>12k</span><span>9k</span><span>6k</span><span>3k</span><span>0</span></div><div className="plot"><div/><div/><div/><div/><svg viewBox="0 0 700 230" preserveAspectRatio="none"><defs><linearGradient id="g" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stopColor="#00f2fe" stopOpacity=".22"/><stop offset="1" stopColor="#00f2fe" stopOpacity="0"/></linearGradient></defs><path d="M0 190 C55 175 65 183 105 155 S160 170 205 135 S260 150 305 112 S365 130 410 95 S470 105 510 70 S580 80 630 45 S675 48 700 25 V230 H0Z" fill="url(#g)"/><path d="M0 190 C55 175 65 183 105 155 S160 170 205 135 S260 150 305 112 S365 130 410 95 S470 105 510 70 S580 80 630 45 S675 48 700 25" fill="none" stroke="#00f2fe" strokeWidth="3"/></svg></div></div><div className="months"><span>01</span><span>05</span><span>10</span><span>15</span><span>20</span><span>25</span><span>30</span></div></section>
-    <section className="panel"><div className="panelhead"><div><h2>Oportunidades quentes</h2><p>Maior potencial de conversão</p></div><button className="link" onClick={onSearch}>Ver todos <ArrowUpRight size={13}/></button></div>{dbLeads.slice(0,3).map(l=><div className="opportunity" key={l.id}><div className="company">{l.name[0]}</div><div className="company-info"><b>{l.name}</b><span>{l.segment} · {l.location}</span></div><strong>{l.score}<small>score</small></strong></div>)}</section></div>
-    <div className="next"><Sparkles size={19}/><div><b>Seu próximo passo</b><span>Você tem 23 leads sem site prontos para uma abordagem comercial.</span></div><button onClick={()=>notify("23 oportunidades encontradas.")}>Encontrar oportunidades <ArrowUpRight size={14}/></button></div>
+    <section className="panel"><div className="panelhead"><div><h2>Oportunidades quentes</h2><p>Maior potencial de conversão</p></div><button className="link" onClick={onSearch}>Ver todos <ArrowUpRight size={13}/></button></div>{leads.slice(0,3).map(l=><div className="opportunity" key={l.id}><div className="company">{l.name[0]}</div><div className="company-info"><b>{l.name}</b><span>{l.segment} · {l.location}</span></div><strong>{l.score}<small>score</small></strong></div>)}</section></div>
+    <div className="next"><Sparkles size={19}/><div><b>Seu próximo passo</b><span>Você tem {leads.filter(l=>!l.hasSite).length} leads sem site prontos para uma abordagem comercial.</span></div><button onClick={()=>notify(`${leads.filter(l=>!l.hasSite).length} oportunidades encontradas.`)}>Encontrar oportunidades <ArrowUpRight size={14}/></button></div>
   </>
 }
 
@@ -151,6 +154,24 @@ function Pipeline({stage,setStage,pipeline,setPipeline,leads,notify}:{stage:stri
  return <><Header eyebrow="CRM COMERCIAL" title="Minha Prospecção" text="Acompanhe cada oportunidade até o fechamento." action={<button className="primary" onClick={()=>notify("Selecione um lead nos resultados para adicioná-lo à prospecção.")}><Users size={16}/> Adicionar lead</button>}/>
  <div className="tabs">{stages.map(s=><button className={stage===s?"selected":""} onClick={()=>setStage(s)} key={s}>{s}</button>)}</div>
  <div className="kanban">{visible.map(({lead,currentStage})=><div className="deal" key={lead.id}><div className="deal-head"><span>{currentStage}</span><b>{lead.score}</b></div><strong>{lead.name}</strong><small>Próxima ação: acompanhar a oportunidade</small><select className="select" value={currentStage} onChange={e=>changeStage(lead.id,e.target.value)}>{stages.slice(1).map(s=><option key={s}>{s}</option>)}</select><div><a className="deal-whatsapp" href={whatsappUrl(lead.phone, commercialMessage(lead.name))} target="_blank" rel="noopener noreferrer"><MessageCircle size={13}/> WhatsApp</a><button onClick={()=>notify("Abordagem IA gerada.")}><Sparkles size={13}/></button></div></div>)}</div></>
+}
+
+function Agenda({notify}:{notify:(s:string)=>void}) {
+  const [items,setItems]=useState<{id:string;content:string;scheduled_at:string|null;completed_at:string|null}[]>([]);
+  useEffect(()=>{(async()=>{const supabase=createClient(); const {data}=await supabase.from("activities").select("id,content,scheduled_at,completed_at").order("scheduled_at",{ascending:true}).limit(30); setItems(data||[]);})();},[]);
+  const complete=async(id:string)=>{const supabase=createClient(); const {error}=await supabase.from("activities").update({completed_at:new Date().toISOString()}).eq("id",id); if(!error){setItems(prev=>prev.map(i=>i.id===id?{...i,completed_at:new Date().toISOString()}:i));notify("Atividade concluída.");}};
+  return <><Header eyebrow="ORGANIZAÇÃO COMERCIAL" title="Agenda" text="Acompanhe os próximos contatos e compromissos." action={<button className="primary" onClick={()=>notify("Criação de atividade será liberada no próximo passo.")}><CalendarDays size={16}/> Nova atividade</button>}/><section className="panel">{items.length?items.map(i=><div className="lead" key={i.id}><div className="leadinfo"><b>{i.content||"Atividade comercial"}</b><span>{i.scheduled_at?new Date(i.scheduled_at).toLocaleString("pt-BR"):"Sem horário definido"}</span></div>{i.completed_at?<span className="muted">Concluída</span>:<button className="secondary" onClick={()=>complete(i.id)}><Check size={14}/> Concluir</button>}</div>):<div className="coming"><div><CalendarDays size={23}/></div><h2>Nenhuma atividade agendada</h2><p>Crie seus próximos contatos para acompanhar a operação comercial.</p></div>}</section></>;
+}
+
+function Results({leads,pipeline}:{leads:LeadRow[];pipeline:Record<string,string>}) {
+  const counts=stages.slice(1).map(s=>({stage:s,count:leads.filter(l=>(pipeline[l.id]||"Selecionado")===s).length}));
+  return <><Header eyebrow="INTELIGÊNCIA COMERCIAL" title="Resultados" text="Veja como seus leads estão avançando pelo funil."/><div className="metrics">{counts.map(x=><div key={x.stage}><b>{x.count}</b><span>{x.stage}</span></div>)}</div><section className="panel"><div className="panelhead"><div><h2>Conversão do funil</h2><p>Distribuição atual dos leads por estágio.</p></div></div>{counts.map(x=><div className="lead" key={x.stage}><div className="leadinfo"><b>{x.stage}</b><span>{leads.length?Math.round(x.count/leads.length*100):0}% da base</span></div><strong className="potential">{x.count}</strong></div>)}</section></>;
+}
+
+function Revenue({revenue,notify}:{revenue:number;notify:(s:string)=>void}) {
+  const [sales,setSales]=useState<{id:string;amount:number;status:string;sold_at:string}[]>([]);
+  useEffect(()=>{(async()=>{const supabase=createClient(); const {data}=await supabase.from("sales").select("id,amount,status,sold_at").order("sold_at",{ascending:false}).limit(50); setSales(data||[]);})();},[]);
+  return <><Header eyebrow="FINANCEIRO" title="Receita" text="Acompanhe vendas e faturamento gerado pela prospecção." action={<button className="primary" onClick={()=>notify("Registre a venda pelo lead no próximo fluxo do CRM.")}><CircleDollarSign size={16}/> Registrar venda</button>}/><div className="stats"><Stat icon={CircleDollarSign} label="Receita ganha" value={revenue.toLocaleString("pt-BR",{style:"currency",currency:"BRL"})} note="Status ganho"/><Stat icon={TrendingUp} label="Vendas registradas" value={sales.filter(s=>s.status==="won").length.toString()} note="No histórico"/></div><section className="panel"><div className="panelhead"><div><h2>Histórico de vendas</h2><p>Últimos lançamentos do workspace.</p></div></div>{sales.length?sales.map(s=><div className="lead" key={s.id}><div className="leadinfo"><b>{Number(s.amount).toLocaleString("pt-BR",{style:"currency",currency:"BRL"})}</b><span>{new Date(s.sold_at).toLocaleDateString("pt-BR")}</span></div><span className="muted">{s.status}</span></div>):<div className="coming"><div><CircleDollarSign size={23}/></div><h2>Nenhuma venda registrada</h2><p>As vendas adicionadas ao CRM aparecerão aqui.</p></div>}</section></>;
 }
 
 function Plans({notify}:{notify:(s:string)=>void}) {
