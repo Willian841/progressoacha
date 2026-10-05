@@ -104,6 +104,9 @@ create index if not exists pipeline_user_stage_idx on public.pipeline_items(user
 create index if not exists activities_user_schedule_idx on public.activities(user_id, scheduled_at);
 create index if not exists searches_user_created_idx on public.searches(user_id, created_at desc);
 create index if not exists sales_user_sold_idx on public.sales(user_id, sold_at desc);
+create index if not exists activities_lead_id_idx on public.activities(lead_id);
+create index if not exists pipeline_items_lead_id_idx on public.pipeline_items(lead_id);
+create index if not exists sales_lead_id_idx on public.sales(lead_id);
 
 create or replace function public.set_updated_at()
 returns trigger
@@ -160,28 +163,28 @@ alter table public.sales enable row level security;
 alter table public.subscriptions enable row level security;
 
 drop policy if exists profiles_self on public.profiles;
-create policy profiles_self on public.profiles for all using (id = auth.uid()) with check (id = auth.uid());
+create policy profiles_self on public.profiles for all using (id = (select auth.uid())) with check (id = (select auth.uid()));
 
 drop policy if exists leads_owner on public.leads;
-create policy leads_owner on public.leads for all using (user_id = auth.uid()) with check (user_id = auth.uid());
+create policy leads_owner on public.leads for all using (user_id = (select auth.uid())) with check (user_id = (select auth.uid()));
 
 drop policy if exists pipeline_owner on public.pipeline_items;
-create policy pipeline_owner on public.pipeline_items for all using (user_id = auth.uid()) with check (user_id = auth.uid());
+create policy pipeline_owner on public.pipeline_items for all using (user_id = (select auth.uid())) with check (user_id = (select auth.uid()));
 
 drop policy if exists activities_owner on public.activities;
-create policy activities_owner on public.activities for all using (user_id = auth.uid()) with check (user_id = auth.uid());
+create policy activities_owner on public.activities for all using (user_id = (select auth.uid())) with check (user_id = (select auth.uid()));
 
 drop policy if exists searches_owner on public.searches;
-create policy searches_owner on public.searches for all using (user_id = auth.uid()) with check (user_id = auth.uid());
+create policy searches_owner on public.searches for all using (user_id = (select auth.uid())) with check (user_id = (select auth.uid()));
 
 drop policy if exists usage_owner on public.usage_monthly;
-create policy usage_owner on public.usage_monthly for all using (user_id = auth.uid()) with check (user_id = auth.uid());
+create policy usage_owner on public.usage_monthly for all using (user_id = (select auth.uid())) with check (user_id = (select auth.uid()));
 
 drop policy if exists sales_owner on public.sales;
-create policy sales_owner on public.sales for all using (user_id = auth.uid()) with check (user_id = auth.uid());
+create policy sales_owner on public.sales for all using (user_id = (select auth.uid())) with check (user_id = (select auth.uid()));
 
 drop policy if exists subscriptions_owner on public.subscriptions;
-create policy subscriptions_owner on public.subscriptions for select using (user_id = auth.uid());
+create policy subscriptions_owner on public.subscriptions for select using (user_id = (select auth.uid()));
 
 create or replace function public.plan_limits(p_plan text)
 returns table(search_limit integer, companies_per_search integer, ai_limit integer, renewable boolean)
