@@ -117,7 +117,7 @@ export default function Home() {
         {active==="Buscar Leads" && <Leads leads={dbLeads} query={query} setQuery={setQuery} notify={notify} searchUsage={searchUsage} setSearchUsage={setSearchUsage} planCode={planCode}/>}
         {active==="Minha Prospecção" && <Pipeline stage={stage} setStage={setStage} pipeline={pipeline} setPipeline={setPipeline} leads={dbLeads} notify={notify}/>}
         {active==="Planos" && <Plans notify={notify}/>}
-        {active==="Agenda" && <Agenda notify={notify}/>}
+        {active==="Agenda" && <Agenda leads={dbLeads} notify={notify}/>}
         {active==="Resultados" && <Results leads={dbLeads} pipeline={pipeline}/>}
         {active==="Receita" && <Revenue revenue={revenue} notify={notify}/>}
         {active==="Configurações" && <SettingsPage userName={userName} setUserName={setUserName} userEmail={userEmail} planCode={planCode} notify={notify}/>}  
@@ -195,7 +195,7 @@ function Pipeline({stage,setStage,pipeline,setPipeline,leads,notify}:{stage:stri
  <div className="kanban">{visible.map(({lead,currentStage})=><div className="deal" key={lead.id}><div className="deal-head"><span>{currentStage}</span><b>{lead.score}</b></div><strong>{lead.name}</strong><small>Próxima ação: acompanhar a oportunidade</small><select className="select" value={currentStage} onChange={e=>changeStage(lead.id,e.target.value)}>{stages.slice(1).map(s=><option key={s}>{s}</option>)}</select><div><a className="deal-whatsapp" href={whatsappUrl(lead.phone, commercialMessage(lead.name))} target="_blank" rel="noopener noreferrer"><MessageCircle size={13}/> WhatsApp</a><button onClick={async()=>{const supabase=createClient(); const {data,error}=await supabase.rpc("consume_ai"); if(error||!data?.[0]){notify("Não foi possível validar o uso da IA.");return;} const result=data[0]; if(!result.allowed){notify(`Limite de IA do plano ${result.plan_code} atingido. Consulte Planos.`);return;} const content=commercialMessage(lead.name); const {error:activityError}=await supabase.from("activities").insert({user_id:(await supabase.auth.getUser()).data.user?.id,lead_id:lead.id,type:"ai_approach",content}); if(activityError){notify("Cota consumida, mas não foi possível salvar a abordagem.");return;} notify(`Abordagem IA salva. Uso: ${result.used}/${result.usage_limit===null?"∞":result.usage_limit}.`);}}><Sparkles size={13}/></button></div></div>)}</div></>
 }
 
-function Agenda({notify}:{notify:(s:string)=>void}) {
+function Agenda({leads,notify}:{leads:LeadRow[];notify:(s:string)=>void}) {
   const [items,setItems]=useState<{id:string;content:string;scheduled_at:string|null;completed_at:string|null;type:string;lead_id:string|null}[]>([]);
   const [open,setOpen]=useState(false);
   const [leadId,setLeadId]=useState("");
@@ -237,7 +237,7 @@ function Agenda({notify}:{notify:(s:string)=>void}) {
   {open && <section className="panel activity-form">
     <div className="panelhead"><div><h2>Nova atividade</h2><p>Registre o próximo passo comercial.</p></div></div>
     <div className="form-grid">
-      <select value={leadId} onChange={e=>setLeadId(e.target.value)}><option value="">Sem lead vinculado</option>{/* leads are linked when created from CRM */}</select>
+      <select value={leadId} onChange={e=>setLeadId(e.target.value)}><option value="">Sem lead vinculado</option>{leads.map(l=><option key={l.id} value={l.id}>{l.name}</option>)}</select>
       <select value={type} onChange={e=>setType(e.target.value)}><option value="task">Tarefa</option><option value="call">Ligação</option><option value="whatsapp">WhatsApp</option><option value="meeting">Reunião</option><option value="note">Nota</option></select>
       <input value={scheduledAt} onChange={e=>setScheduledAt(e.target.value)} type="datetime-local"/>
       <input value={content} onChange={e=>setContent(e.target.value)} placeholder="Ex.: Fazer follow-up com o decisor"/>
