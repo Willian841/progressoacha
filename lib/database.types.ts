@@ -322,6 +322,34 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      consume_ai: {
+        Args: never
+        Returns: {
+          allowed: boolean
+          plan_code: string
+          renewable: boolean
+          usage_limit: number
+          used: number
+        }[]
+      }
+      consume_search: {
+        Args: {
+          p_area?: string
+          p_city?: string
+          p_country?: string
+          p_filters?: Json
+          p_result_count?: number
+          p_segment?: string
+          p_state?: string
+        }
+        Returns: {
+          allowed: boolean
+          plan_code: string
+          renewable: boolean
+          usage_limit: number
+          used: number
+        }[]
+      }
       plan_limits: {
         Args: { p_plan: string }
         Returns: {
