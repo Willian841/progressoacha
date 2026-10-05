@@ -465,3 +465,7 @@ DO $$ BEGIN alter table public.plan_settings add constraint plan_settings_ai_lim
 
 drop policy if exists billing_events_no_client_access on public.billing_events;
 create policy billing_events_no_client_access on public.billing_events for all to authenticated using (false) with check (false);
+
+create or replace function public.checkout_plan(p_plan_code text) returns jsonb language plpgsql security invoker set search_path=public as $$ declare v_user uuid:=auth.uid(); v_plan public.plan_settings%rowtype; v_sub public.subscriptions%rowtype; begin if v_user is null then raise exception 'not_authenticated'; end if; select * into v_plan from public.plan_settings where plan_code=p_plan_code; if not found then raise exception 'invalid_plan'; end if; if v_plan.plan_code='free' then raise exception 'free_plan_no_checkout'; end if; select * into v_sub from public.subscriptions where user_id=v_user for update; if v_sub.plan_code=p_plan_code and v_sub.status='active' then return jsonb_build_object('status','already_active','plan_code',p_plan_code); end if; return jsonb_build_object('status','checkout_required','plan_code',v_plan.plan_code,'name',v_plan.name,'price',v_plan.price,'provider',coalesce((select provider from public.gateway_settings where id=true),'none')); end; $$;
+revoke all on function public.checkout_plan(text) from public;
+grant execute on function public.checkout_plan(text) to authenticated;
