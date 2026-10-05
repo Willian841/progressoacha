@@ -91,7 +91,7 @@ export default function Home() {
           pipelineRows?.forEach(row => { saved[row.lead_id] = dbToStage[row.stage] || "Selecionado"; });
           setPipeline(saved);
           const { data:salesRows } = await supabase.from("sales").select("amount").eq("status","won");
-          setRevenue((salesRows || []).reduce((total,row) => total + Number(row.amount || 0), 0));
+          setRevenue((salesRows || []).reduce((total:number,row:any) => total + Number(row.amount || 0), 0));
         }
       } catch (error) { console.error(error); }
       finally { if (mounted) setAuthReady(true); }
