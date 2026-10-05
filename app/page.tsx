@@ -65,8 +65,9 @@ export default function Home() {
         if (!data.user) { window.location.href = "/login"; return; }
         setUserName(data.user.user_metadata?.full_name || data.user.email?.split("@")[0] || "Usuário");
         setUserEmail(data.user.email || "");
-        const { data: profile } = await supabase.from("profiles").select("plan_code,role").eq("id", data.user.id).maybeSingle();
-        const admin = data.user.email?.toLowerCase() === "willianaaquinomiranda@gmail.com" && profile?.role === "admin";
+        const { data: profile } = await supabase.from("profiles").select("plan_code").eq("id", data.user.id).maybeSingle();
+        const { data: adminRows } = await supabase.rpc("is_admin");
+        const admin = data.user.email?.toLowerCase() === "willianaaquinomiranda@gmail.com" && adminRows === true;
         setIsAdmin(admin);
         const currentPlan = profile?.plan_code || "free";
         setPlanCode(currentPlan);
@@ -362,7 +363,7 @@ function AdminPage({notify}:{notify:(s:string)=>void}) {
   const [loading,setLoading]=useState(true);
   const [saving,setSaving]=useState("");
   const load=async()=>{
-    const supabase=createClient();
+    const supabase=createClient() as any;
     const [p,g]=await Promise.all([
       supabase.from("plan_settings").select("plan_code,name,price,search_limit,companies_per_search,ai_limit").order("price",{ascending:true}),
       supabase.from("gateway_settings").select("provider,mode,public_key,webhook_url,enabled").eq("id",true).maybeSingle()
