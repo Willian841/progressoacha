@@ -50,6 +50,7 @@ export default function Home() {
   const [theme,setTheme] = useState<"dark"|"light">("dark");
   const [language,setLanguage] = useState("pt-BR");
 
+  const isAdmin = planCode === "infinity";
   const notify = (message:string) => { setToast(message); window.setTimeout(() => setToast(""),2600); };
   useEffect(() => {
     const savedTheme = window.localStorage.getItem("progressoacha-theme");
@@ -68,7 +69,6 @@ export default function Home() {
         const { data: profile } = await supabase.from("profiles").select("plan_code").eq("id", data.user.id).maybeSingle();
         const { data: adminRows } = await (supabase as any).rpc("is_admin");
         const admin = data.user.email?.toLowerCase() === "willianaaquinomiranda@gmail.com" && adminRows === true;
-        setIsAdmin(admin);
         const currentPlan = profile?.plan_code || "free";
         setPlanCode(currentPlan);
         const { data: limits } = await supabase.rpc("plan_limits", { p_plan: currentPlan });
@@ -88,7 +88,7 @@ export default function Home() {
           setDbLeads(result.data.map((r:any) => ({id:r.id,name:r.name,segment:r.segment || "Outros",location:[r.city,r.state].filter(Boolean).join(", "),country:r.country || "Brasil",state:r.state || "",city:r.city || "",area:r.area || "",hasSite:r.website_status === "found",score:r.opportunity_score,phone:r.phone || ""})));
           const { data:pipelineRows } = await supabase.from("pipeline_items").select("lead_id,stage");
           const saved:Record<string,string> = {};
-          pipelineRows?.forEach(row => { saved[row.lead_id] = dbToStage[row.stage] || "Selecionado"; });
+          pipelineRows?.forEach((row:any) => { saved[row.lead_id] = dbToStage[row.stage] || "Selecionado"; });
           setPipeline(saved);
           const { data:salesRows } = await supabase.from("sales").select("amount").eq("status","won");
           setRevenue((salesRows || []).reduce((total:number,row:any) => total + Number(row.amount || 0), 0));
