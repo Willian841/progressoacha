@@ -154,7 +154,7 @@ function Dashboard({userName,leads,pipeline,revenue,onSearch,onPipeline,notify}:
     <div className="stats">
     <Stat icon={Users} label="Leads encontrados" value={leads.length.toLocaleString("pt-BR")} note="No seu workspace"/>
     <Stat icon={Target} label="Em prospecção" value={Object.keys(pipeline).length.toLocaleString("pt-BR")} note="Com estágio salvo"/>
-    <Stat icon={TrendingUp} label="Taxa de resposta" value={`${Object.keys(pipeline).length ? Math.round((Object.values(pipeline).filter(s=>["Respondeu","Reunião","Proposta","Venda"].includes(s)).length / Object.keys(pipeline).length) * 100 : 0)}%`} note="Baseada no CRM"/>
+    <Stat icon={TrendingUp} label="Taxa de resposta" value={`${Object.keys(pipeline).length ? Math.round((Object.values(pipeline).filter(s=>["Respondeu","Reunião","Proposta","Venda"].includes(s)).length / Object.keys(pipeline).length) * 100 : 0}%`} note="Baseada no CRM"/>
     <Stat icon={CircleDollarSign} label="Receita gerada" value={revenue.toLocaleString("pt-BR",{style:"currency",currency:"BRL"})} note="Vendas marcadas como ganhas"/>
   </div>
     <div className="dashboard-grid"><section className="panel"><div className="panelhead"><div><h2>Funil comercial</h2><p>Distribuição real dos leads salvos no CRM.</p></div><button className="link" onClick={onPipeline}>Abrir CRM <ArrowUpRight size={13}/></button></div><div className="funnel">{stages.slice(1).map(s=>{const count=Object.values(pipeline).filter(v=>v===s).length;const pct=Object.keys(pipeline).length?Math.round(count/Object.keys(pipeline).length*100):0;return <div className="funnel-row" key={s}><div><span>{s}</span><b>{count}</b></div><div className="funnel-track"><i style={{width:(Math.max(pct,count?6:0)+"%")}}/></div></div>})}</div></section>
