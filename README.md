@@ -19,8 +19,8 @@ A primeira fundação visual e de navegação já está publicada na branch main
 - Base de componentes preparada para integração com dados persistentes
 
 ### Próximas camadas
-1. Conectar o projeto ao Supabase e configurar variáveis de ambiente
-2. Banco de dados e modelo de assinatura
+1. Conectar um projeto Supabase e configurar variáveis de ambiente
+2. Aplicar `supabase/schema.sql` no projeto Supabase
 3. API de leads e filtros avançados
 4. Persistência do CRM e agenda
 5. IA para abordagens
