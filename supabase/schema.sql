@@ -444,3 +444,17 @@ left join public.subscriptions s on s.user_id=p.id;
 
 revoke all on public.admin_user_overview from anon, public;
 grant select on public.admin_user_overview to authenticated;
+
+
+-- Billing preparado para integração com provedor externo
+alter table public.subscriptions add column if not exists provider text;
+alter table public.subscriptions add column if not exists provider_customer_id text;
+alter table public.subscriptions add column if not exists provider_subscription_id text;
+alter table public.subscriptions add column if not exists current_period_end timestamptz;
+alter table public.subscriptions add column if not exists cancel_at_period_end boolean not null default false;
+alter table public.subscriptions add column if not exists updated_at timestamptz not null default now();
+create unique index if not exists subscriptions_provider_subscription_uidx on public.subscriptions(provider_subscription_id) where provider_subscription_id is not null;
+create table if not exists public.billing_events(id uuid primary key default gen_random_uuid(), provider text not null, event_id text not null, event_type text not null, payload jsonb not null default '{}'::jsonb, processed boolean not null default false, created_at timestamptz not null default now(), processed_at timestamptz);
+create unique index if not exists billing_events_provider_event_uidx on public.billing_events(provider,event_id);
+alter table public.billing_events enable row level security;
+revoke all on public.billing_events from anon, public, authenticated;
