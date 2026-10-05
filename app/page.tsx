@@ -5,7 +5,7 @@ import { createClient } from "../lib/supabase-browser";
 import {
   ArrowUpRight, BarChart3, CalendarDays, Check, ChevronRight, CircleDollarSign,
   Globe2, LayoutDashboard, Menu, MessageCircle, Search, Settings, Sparkles,
-  Target, TrendingUp, Users, X, Zap, LogOut
+  Target, TrendingUp, Users, X, Zap, LogOut, Save, LockKeyhole
 } from "lucide-react";
 
 const leads = [
@@ -40,6 +40,7 @@ export default function Home() {
   const [stage,setStage] = useState("Tudo");
   const [authReady,setAuthReady] = useState(false);
   const [userName,setUserName] = useState("Willian");
+  const [userEmail,setUserEmail] = useState("");
   const [dbLeads,setDbLeads] = useState<LeadRow[]>([]);
   const [planCode,setPlanCode] = useState("free");
   const [searchUsage,setSearchUsage] = useState<{used:number;limit:number|null}>({used:0,limit:3});
@@ -57,6 +58,7 @@ export default function Home() {
         if (!mounted) return;
         if (!data.user) { window.location.href = "/login"; return; }
         setUserName(data.user.user_metadata?.full_name || data.user.email?.split("@")[0] || "Usuário");
+        setUserEmail(data.user.email || "");
         const { data: profile } = await supabase.from("profiles").select("plan_code").eq("id", data.user.id).maybeSingle();
         const currentPlan = profile?.plan_code || "free";
         setPlanCode(currentPlan);
@@ -118,7 +120,7 @@ export default function Home() {
         {active==="Agenda" && <Agenda notify={notify}/>}
         {active==="Resultados" && <Results leads={dbLeads} pipeline={pipeline}/>}
         {active==="Receita" && <Revenue revenue={revenue} notify={notify}/>}
-        {active==="Configurações" && <Coming title={active}/>} 
+        {active==="Configurações" && <SettingsPage userName={userName} setUserName={setUserName} userEmail={userEmail} planCode={planCode} notify={notify}/>}  
       </div>
     </main>
     {toast && <div className="toast"><Check size={16}/>{toast}</div>}
@@ -194,10 +196,55 @@ function Pipeline({stage,setStage,pipeline,setPipeline,leads,notify}:{stage:stri
 }
 
 function Agenda({notify}:{notify:(s:string)=>void}) {
-  const [items,setItems]=useState<{id:string;content:string;scheduled_at:string|null;completed_at:string|null}[]>([]);
-  useEffect(()=>{(async()=>{const supabase=createClient(); const {data}=await supabase.from("activities").select("id,content,scheduled_at,completed_at").order("scheduled_at",{ascending:true}).limit(30); setItems(data||[]);})();},[]);
-  const complete=async(id:string)=>{const supabase=createClient(); const {error}=await supabase.from("activities").update({completed_at:new Date().toISOString()}).eq("id",id); if(!error){setItems(prev=>prev.map(i=>i.id===id?{...i,completed_at:new Date().toISOString()}:i));notify("Atividade concluída.");}};
-  return <><Header eyebrow="ORGANIZAÇÃO COMERCIAL" title="Agenda" text="Acompanhe os próximos contatos e compromissos." action={<button className="primary" onClick={()=>notify("Criação de atividade será liberada no próximo passo.")}><CalendarDays size={16}/> Nova atividade</button>}/><section className="panel">{items.length?items.map(i=><div className="lead" key={i.id}><div className="leadinfo"><b>{i.content||"Atividade comercial"}</b><span>{i.scheduled_at?new Date(i.scheduled_at).toLocaleString("pt-BR"):"Sem horário definido"}</span></div>{i.completed_at?<span className="muted">Concluída</span>:<button className="secondary" onClick={()=>complete(i.id)}><Check size={14}/> Concluir</button>}</div>):<div className="coming"><div><CalendarDays size={23}/></div><h2>Nenhuma atividade agendada</h2><p>Crie seus próximos contatos para acompanhar a operação comercial.</p></div>}</section></>;
+  const [items,setItems]=useState<{id:string;content:string;scheduled_at:string|null;completed_at:string|null;type:string;lead_id:string|null}[]>([]);
+  const [open,setOpen]=useState(false);
+  const [leadId,setLeadId]=useState("");
+  const [type,setType]=useState("task");
+  const [content,setContent]=useState("");
+  const [scheduledAt,setScheduledAt]=useState("");
+  const [saving,setSaving]=useState(false);
+
+  const load=async()=>{
+    const supabase=createClient();
+    const {data}=await supabase.from("activities").select("id,content,scheduled_at,completed_at,type,lead_id").order("scheduled_at",{ascending:true}).limit(50);
+    setItems(data||[]);
+  };
+  useEffect(()=>{ load(); },[]);
+
+  const createActivity=async()=>{
+    if(!content.trim()){notify("Descreva a atividade antes de salvar.");return;}
+    setSaving(true);
+    try{
+      const supabase=createClient();
+      const {data:userData}=await supabase.auth.getUser();
+      if(!userData.user){return;}
+      const {error}=await supabase.from("activities").insert({
+        user_id:userData.user.id, lead_id:leadId||null, type, content:content.trim(),
+        scheduled_at:scheduledAt?new Date(scheduledAt).toISOString():null
+      });
+      if(error){notify("Não foi possível criar a atividade.");return;}
+      setContent(""); setScheduledAt(""); setLeadId(""); setType("task"); setOpen(false);
+      await load(); notify("Atividade criada na agenda.");
+    }finally{setSaving(false);}
+  };
+  const complete=async(id:string)=>{
+    const supabase=createClient(); const completedAt=new Date().toISOString();
+    const {error}=await supabase.from("activities").update({completed_at:completedAt}).eq("id",id);
+    if(!error){setItems(prev=>prev.map(i=>i.id===id?{...i,completed_at:completedAt}:i));notify("Atividade concluída.");}
+  };
+
+  return <><Header eyebrow="ORGANIZAÇÃO COMERCIAL" title="Agenda" text="Acompanhe os próximos contatos e compromissos." action={<button className="primary" onClick={()=>setOpen(v=>!v)}><CalendarDays size={16}/> Nova atividade</button>}/>
+  {open && <section className="panel activity-form">
+    <div className="panelhead"><div><h2>Nova atividade</h2><p>Registre o próximo passo comercial.</p></div></div>
+    <div className="form-grid">
+      <select value={leadId} onChange={e=>setLeadId(e.target.value)}><option value="">Sem lead vinculado</option>{/* leads are linked when created from CRM */}</select>
+      <select value={type} onChange={e=>setType(e.target.value)}><option value="task">Tarefa</option><option value="call">Ligação</option><option value="whatsapp">WhatsApp</option><option value="meeting">Reunião</option><option value="note">Nota</option></select>
+      <input value={scheduledAt} onChange={e=>setScheduledAt(e.target.value)} type="datetime-local"/>
+      <input value={content} onChange={e=>setContent(e.target.value)} placeholder="Ex.: Fazer follow-up com o decisor"/>
+    </div>
+    <div className="form-actions"><button className="secondary" onClick={()=>setOpen(false)}>Cancelar</button><button className="primary" disabled={saving} onClick={createActivity}><Save size={14}/> {saving?"Salvando...":"Salvar atividade"}</button></div>
+  </section>}
+  <section className="panel">{items.length?items.map(i=><div className="lead" key={i.id}><div className="leadinfo"><b>{i.content||"Atividade comercial"}</b><span>{i.scheduled_at?new Date(i.scheduled_at).toLocaleString("pt-BR"):"Sem horário definido"} · {i.type}</span></div>{i.completed_at?<span className="muted">Concluída</span>:<button className="secondary" onClick={()=>complete(i.id)}><Check size={14}/> Concluir</button>}</div>):<div className="coming"><div><CalendarDays size={23}/></div><h2>Nenhuma atividade agendada</h2><p>Crie seus próximos contatos para acompanhar a operação comercial.</p></div>}</section></>;
 }
 
 function Results({leads,pipeline}:{leads:LeadRow[];pipeline:Record<string,string>}) {
@@ -206,14 +253,71 @@ function Results({leads,pipeline}:{leads:LeadRow[];pipeline:Record<string,string
 }
 
 function Revenue({revenue,notify}:{revenue:number;notify:(s:string)=>void}) {
-  const [sales,setSales]=useState<{id:string;amount:number;status:string;sold_at:string}[]>([]);
-  useEffect(()=>{(async()=>{const supabase=createClient(); const {data}=await supabase.from("sales").select("id,amount,status,sold_at").order("sold_at",{ascending:false}).limit(50); setSales(data||[]);})();},[]);
-  return <><Header eyebrow="FINANCEIRO" title="Receita" text="Acompanhe vendas e faturamento gerado pela prospecção." action={<button className="primary" onClick={()=>notify("Registre a venda pelo lead no próximo fluxo do CRM.")}><CircleDollarSign size={16}/> Registrar venda</button>}/><div className="stats"><Stat icon={CircleDollarSign} label="Receita ganha" value={revenue.toLocaleString("pt-BR",{style:"currency",currency:"BRL"})} note="Status ganho"/><Stat icon={TrendingUp} label="Vendas registradas" value={sales.filter(s=>s.status==="won").length.toString()} note="No histórico"/></div><section className="panel"><div className="panelhead"><div><h2>Histórico de vendas</h2><p>Últimos lançamentos do workspace.</p></div></div>{sales.length?sales.map(s=><div className="lead" key={s.id}><div className="leadinfo"><b>{Number(s.amount).toLocaleString("pt-BR",{style:"currency",currency:"BRL"})}</b><span>{new Date(s.sold_at).toLocaleDateString("pt-BR")}</span></div><span className="muted">{s.status}</span></div>):<div className="coming"><div><CircleDollarSign size={23}/></div><h2>Nenhuma venda registrada</h2><p>As vendas adicionadas ao CRM aparecerão aqui.</p></div>}</section></>;
+  const [sales,setSales]=useState<{id:string;amount:number;status:string;sold_at:string;lead_id:string|null}[]>([]);
+  const [open,setOpen]=useState(false);
+  const [leadId,setLeadId]=useState("");
+  const [amount,setAmount]=useState("");
+  const [status,setStatus]=useState("won");
+  const [soldAt,setSoldAt]=useState("");
+  const [saving,setSaving]=useState(false);
+
+  const load=async()=>{
+    const supabase=createClient();
+    const {data}=await supabase.from("sales").select("id,amount,status,sold_at,lead_id").order("sold_at",{ascending:false}).limit(50);
+    setSales(data||[]);
+  };
+  useEffect(()=>{load();},[]);
+
+  const registerSale=async()=>{
+    const numeric=Number(amount.replace(",",".")); if(!Number.isFinite(numeric)||numeric<0){notify("Informe um valor de venda válido.");return;}
+    setSaving(true);
+    try{
+      const supabase=createClient(); const {data:userData}=await supabase.auth.getUser();
+      if(!userData.user){return;}
+      const {error}=await supabase.from("sales").insert({user_id:userData.user.id,lead_id:leadId||null,amount:numeric,status,sold_at:soldAt?new Date(soldAt).toISOString():new Date().toISOString()});
+      if(error){notify("Não foi possível registrar a venda.");return;}
+      if(status==="won"&&leadId){
+        await supabase.from("pipeline_items").upsert({user_id:userData.user.id,lead_id:leadId,stage:"sale"},{onConflict:"user_id,lead_id"});
+      }
+      setAmount("");setLeadId("");setStatus("won");setSoldAt("");setOpen(false);await load();
+      notify("Venda registrada com sucesso.");
+      window.location.reload();
+    }finally{setSaving(false);}
+  };
+
+  return <><Header eyebrow="FINANCEIRO" title="Receita" text="Acompanhe vendas e faturamento gerado pela prospecção." action={<button className="primary" onClick={()=>setOpen(v=>!v)}><CircleDollarSign size={16}/> Registrar venda</button>}/>
+  {open&&<section className="panel activity-form"><div className="panelhead"><div><h2>Registrar venda</h2><p>O lançamento fica salvo no histórico financeiro.</p></div></div><div className="form-grid"><input value={amount} onChange={e=>setAmount(e.target.value)} placeholder="Valor da venda · R$" inputMode="decimal"/><select value={status} onChange={e=>setStatus(e.target.value)}><option value="won">Ganha</option><option value="pending">Pendente</option><option value="cancelled">Cancelada</option></select><input value={soldAt} onChange={e=>setSoldAt(e.target.value)} type="datetime-local"/></div><div className="form-actions"><button className="secondary" onClick={()=>setOpen(false)}>Cancelar</button><button className="primary" disabled={saving} onClick={registerSale}><Save size={14}/> {saving?"Salvando...":"Salvar venda"}</button></div></section>}
+  <div className="stats"><Stat icon={CircleDollarSign} label="Receita ganha" value={revenue.toLocaleString("pt-BR",{style:"currency",currency:"BRL"})} note="Status ganho"/><Stat icon={TrendingUp} label="Vendas registradas" value={sales.filter(s=>s.status==="won").length.toString()} note="No histórico"/></div><section className="panel"><div className="panelhead"><div><h2>Histórico de vendas</h2><p>Últimos lançamentos do workspace.</p></div></div>{sales.length?sales.map(s=><div className="lead" key={s.id}><div className="leadinfo"><b>{Number(s.amount).toLocaleString("pt-BR",{style:"currency",currency:"BRL"})}</b><span>{new Date(s.sold_at).toLocaleDateString("pt-BR")}</span></div><span className="muted">{s.status}</span></div>):<div className="coming"><div><CircleDollarSign size={23}/></div><h2>Nenhuma venda registrada</h2><p>As vendas adicionadas ao CRM aparecerão aqui.</p></div>}</section></>;
 }
 
 function Plans({notify}:{notify:(s:string)=>void}) {
  const plans=[["Gratuito","R$ 0","3 buscas no total","20 empresas por busca","5 abordagens IA / mês"],["Básico","R$ 24,90","60 buscas / mês","30 empresas por busca","20 abordagens IA / mês"],["Pro","R$ 49,90","300 buscas / mês","40 empresas por busca","200 abordagens IA / mês"],["Infinity","R$ 59,90","Buscas ilimitadas*","40 empresas por busca","1.000 abordagens IA / mês"]];
  return <><Header eyebrow="PLANOS E ASSINATURAS" title="Escolha o ritmo do seu crescimento." text="Mais leads, mais conversas e mais oportunidades em um só lugar."/><div className="plans">{plans.map((p,i)=><div className={i===2?"plan featured":"plan"} key={p[0]}>{i===2&&<label>Mais escolhido</label>}{i===3&&<label className="gold">Desconto especial</label>}<span>{p[0]}</span><strong>{p[1]}<small>{i?"/mês":""}</small></strong><p>Para {i===0?"começar":i===1?"profissionais":"quem quer escalar"} sua prospecção.</p>{p.slice(2).map(f=><div className="feature" key={f}><Check size={14}/>{f}</div>)}<div className="feature"><Check size={14}/>Filtros avançados</div><div className="feature"><Check size={14}/>Minha Prospecção e Agenda</div><button className={i===2?"primary":"secondary"} onClick={()=>notify(i===2?"Plano Pro selecionado.":"Fluxo de assinatura preparado.")}>{i===0?"Plano atual":i===2?"Continuar com Pro":"Escolher plano"}</button></div>)}</div></>
+}
+
+function SettingsPage({userName,setUserName,userEmail,planCode,notify}:{userName:string;setUserName:(v:string)=>void;userEmail:string;planCode:string;notify:(s:string)=>void}) {
+  const [name,setName]=useState(userName);
+  const [password,setPassword]=useState("");
+  const [saving,setSaving]=useState(false);
+  useEffect(()=>setName(userName),[userName]);
+  const saveProfile=async()=>{
+    if(!name.trim()){notify("Informe seu nome.");return;}
+    setSaving(true);
+    try{
+      const supabase=createClient(); const {data:userData}=await supabase.auth.getUser();
+      if(!userData.user){return;}
+      const {error}=await supabase.from("profiles").update({full_name:name.trim()}).eq("id",userData.user.id);
+      if(error){notify("Não foi possível salvar o perfil.");return;}
+      await supabase.auth.updateUser({data:{full_name:name.trim()}});
+      setUserName(name.trim());notify("Perfil atualizado.");
+    }finally{setSaving(false);}
+  };
+  const changePassword=async()=>{
+    if(password.length<6){notify("A senha precisa ter pelo menos 6 caracteres.");return;}
+    setSaving(true);
+    try{const {error}=await createClient().auth.updateUser({password});if(error){notify("Não foi possível atualizar a senha.");return;}setPassword("");notify("Senha atualizada com segurança.");}finally{setSaving(false);}
+  };
+  return <><Header eyebrow="SISTEMA" title="Configurações" text="Gerencie seu perfil e os dados de acesso do workspace."/><div className="settings-grid"><section className="panel settings-card"><div className="panelhead"><div><h2>Perfil</h2><p>Informações exibidas no workspace.</p></div></div><label className="field-label">Nome<input value={name} onChange={e=>setName(e.target.value)} /></label><label className="field-label">E-mail<input value={userEmail} readOnly /></label><label className="field-label">Plano<input value={planCode==="infinity"?"Infinity":planCode==="pro"?"Pro":planCode==="basic"?"Básico":"Gratuito"} readOnly /></label><button className="primary" disabled={saving} onClick={saveProfile}><Save size={14}/> Salvar perfil</button></section><section className="panel settings-card"><div className="panelhead"><div><h2>Segurança</h2><p>Troque sua senha sem sair do workspace.</p></div></div><label className="field-label">Nova senha<input value={password} onChange={e=>setPassword(e.target.value)} type="password" placeholder="Mínimo de 6 caracteres"/></label><button className="secondary" disabled={saving} onClick={changePassword}><LockKeyhole size={14}/> Atualizar senha</button></section></div></>;
 }
 
 function Coming({title}:{title:string}){return <div className="coming"><div><Sparkles size={23}/></div><div className="eyebrow">MÓDULO PROGRESSO ACHA</div><h1>{title}</h1><p>A estrutura está conectada à plataforma. A próxima camada integra os dados persistentes, autenticação e serviços externos sem comprometer o design.</p></div>}
