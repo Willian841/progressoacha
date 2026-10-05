@@ -15,11 +15,10 @@ export async function proxy(request: NextRequest) {
       getAll() {
         return request.cookies.getAll();
       },
-      setAll(cookiesToSet: any, headers: any) {
+      setAll(cookiesToSet: any) {
         cookiesToSet.forEach(({ name, value }: any) => request.cookies.set(name, value));
         response = NextResponse.next({ request });
         cookiesToSet.forEach(({ name, value, options }: any) => response.cookies.set(name, value, options));
-        Object.entries(headers || {}).forEach(([name, value]) => response.headers.set(name, String(value)));
       },
     },
   });
