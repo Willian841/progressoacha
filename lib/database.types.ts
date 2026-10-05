@@ -152,6 +152,7 @@ export type Database = {
           created_at: string
           full_name: string | null
           id: string
+          role: string
           plan_code: string
           updated_at: string
         }
@@ -159,6 +160,7 @@ export type Database = {
           created_at?: string
           full_name?: string | null
           id: string
+          role?: string
           plan_code?: string
           updated_at?: string
         }
@@ -166,6 +168,7 @@ export type Database = {
           created_at?: string
           full_name?: string | null
           id?: string
+          role?: string
           plan_code?: string
           updated_at?: string
         }
@@ -257,6 +260,9 @@ export type Database = {
           id: string
           plan_code: string
           provider: string | null
+          provider_customer_id: string | null
+          provider_subscription_id: string | null
+          cancel_at_period_end: boolean
           status: string
           updated_at: string
           user_id: string
@@ -269,6 +275,9 @@ export type Database = {
           id?: string
           plan_code?: string
           provider?: string | null
+          provider_customer_id?: string | null
+          provider_subscription_id?: string | null
+          cancel_at_period_end?: boolean
           status?: string
           updated_at?: string
           user_id: string
@@ -281,10 +290,31 @@ export type Database = {
           id?: string
           plan_code?: string
           provider?: string | null
+          provider_customer_id?: string | null
+          provider_subscription_id?: string | null
+          cancel_at_period_end?: boolean
           status?: string
           updated_at?: string
           user_id?: string
         }
+        Relationships: []
+      }
+      billing_events: {
+        Row: { id: string; provider: string; event_id: string; event_type: string; payload: Json; processed: boolean; created_at: string; processed_at: string | null }
+        Insert: { id?: string; provider: string; event_id: string; event_type: string; payload?: Json; processed?: boolean; created_at?: string; processed_at?: string | null }
+        Update: { id?: string; provider?: string; event_id?: string; event_type?: string; payload?: Json; processed?: boolean; created_at?: string; processed_at?: string | null }
+        Relationships: []
+      }
+      gateway_settings: {
+        Row: { id: boolean; provider: string; mode: string; public_key: string | null; webhook_url: string | null; enabled: boolean; updated_at: string }
+        Insert: { id?: boolean; provider?: string; mode?: string; public_key?: string | null; webhook_url?: string | null; enabled?: boolean; updated_at?: string }
+        Update: { id?: boolean; provider?: string; mode?: string; public_key?: string | null; webhook_url?: string | null; enabled?: boolean; updated_at?: string }
+        Relationships: []
+      }
+      plan_settings: {
+        Row: { plan_code: string; name: string; price: number; search_limit: number | null; companies_per_search: number; ai_limit: number | null; renewable: boolean; updated_at: string }
+        Insert: { plan_code: string; name: string; price?: number; search_limit?: number | null; companies_per_search?: number; ai_limit?: number | null; renewable?: boolean; updated_at?: string }
+        Update: { plan_code?: string; name?: string; price?: number; search_limit?: number | null; companies_per_search?: number; ai_limit?: number | null; renewable?: boolean; updated_at?: string }
         Relationships: []
       }
       usage_monthly: {
@@ -322,7 +352,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      consume_ai: {
+      is_admin: { Args: never; Returns: boolean }\n      consume_ai: {
         Args: never
         Returns: {
           allowed: boolean
