@@ -56,6 +56,16 @@ export default function Home() {
         if (!mounted) return;
         if (!data.user) { window.location.href = "/login"; return; }
         setUserName(data.user.user_metadata?.full_name || data.user.email?.split("@")[0] || "Usuário");
+        const { data: profile } = await supabase.from("profiles").select("plan_code").eq("id", data.user.id).maybeSingle();
+        const currentPlan = profile?.plan_code || "free";
+        setPlanCode(currentPlan);
+        const { data: limits } = await supabase.rpc("plan_limits", { p_plan: currentPlan });
+        const limitRow = limits?.[0];
+        const monthStart = new Date(); monthStart.setDate(1); monthStart.setHours(0,0,0,0);
+        const { count: totalSearches } = await supabase.from("searches").select("id", { count:"exact", head:true });
+        const { data: usageRow } = await supabase.from("usage_monthly").select("search_count,ai_count").eq("user_id", data.user.id).eq("month_start", monthStart.toISOString().slice(0,10)).maybeSingle();
+        setSearchUsage({used: currentPlan === "free" ? (totalSearches || 0) : (usageRow?.search_count || 0), limit: limitRow?.search_limit ?? null});
+        setAiUsage({used: usageRow?.ai_count || 0, limit: limitRow?.ai_limit ?? null});
         let result = await supabase.from("leads").select("id,name,segment,city,state,website_status,opportunity_score,phone").order("opportunity_score",{ascending:false}).limit(50);
         if (!result.data?.length) {
           const seed = leads.map(l => ({user_id:data.user.id,name:l[0],segment:l[1],city:l[2].split(", ")[0] || null,state:l[2].split(", ")[1] || null,country:"Brasil",phone:l[5],website_status:l[3] ? "found" : "not_found",opportunity_score:l[4],source:"demo"}));
@@ -94,14 +104,14 @@ export default function Home() {
       <div className="brand"><div className="logo"><Sparkles size={17}/></div><div><b>Progresso</b><span>ACHA</span></div><button className="close" onClick={()=>setMobile(false)}><X/></button></div>
       <div className="workspace"><small>WORKSPACE</small><button>Meu negócio <ChevronRight size={14}/></button></div>
       <nav>{nav.map(([group,items])=><div className="navgroup" key={group}><label>{group}</label>{items.map(([label,Icon])=><button key={label} className={active===label?"nav active":"nav"} onClick={()=>{setActive(label);setMobile(false)}}><Icon size={17}/><span>{label}</span>{label==="Buscar Leads"&&<em>12</em>}</button>)}</div>)}</nav>
-      <div className="sidebottom"><div className="mini-plan"><small>PLANO ATUAL</small><b>Pro</b><button onClick={()=>setActive("Planos")}>Upgrade <ArrowUpRight size={12}/></button></div><button className="nav"><Settings size={17}/><span>Preferências</span></button><button className="nav danger" onClick={logout}><LogOut size={17}/><span>Sair</span></button></div>
+      <div className="sidebottom"><div className="mini-plan"><small>PLANO ATUAL</small><b>{planCode === "infinity" ? "Infinity" : planCode === "basic" ? "Básico" : planCode === "pro" ? "Pro" : "Gratuito"}</b><button onClick={()=>setActive("Planos")}>Upgrade <ArrowUpRight size={12}/></button></div><button className="nav"><Settings size={17}/><span>Preferências</span></button><button className="nav danger" onClick={logout}><LogOut size={17}/><span>Sair</span></button></div>
     </aside>
 
     <main className="main">
       <header><button className="hamb" onClick={()=>setMobile(true)}><Menu/></button><div className="crumb">Workspace <ChevronRight size={13}/> <b>{active}</b></div><div className="actions"><button><Globe2 size={17}/></button><button className="notify"><MessageCircle size={17}/><i/></button><div className="avatar">{userName.slice(0,2).toUpperCase()}</div></div></header>
       <div className="content">
         {active==="Dashboard" && <Dashboard userName={userName} leads={dbLeads} pipeline={pipeline} revenue={revenue} onSearch={()=>setActive("Buscar Leads")} notify={notify}/>}
-        {active==="Buscar Leads" && <Leads leads={dbLeads} query={query} setQuery={setQuery} notify={notify}/>}
+        {active==="Buscar Leads" && <Leads leads={dbLeads} query={query} setQuery={setQuery} notify={notify} searchUsage={searchUsage} planCode={planCode}/>}
         {active==="Minha Prospecção" && <Pipeline stage={stage} setStage={setStage} pipeline={pipeline} setPipeline={setPipeline} leads={dbLeads} notify={notify}/>}
         {active==="Planos" && <Plans notify={notify}/>}
         {active==="Agenda" && <Agenda notify={notify}/>}
