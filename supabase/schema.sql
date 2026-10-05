@@ -108,7 +108,8 @@ create index if not exists sales_user_sold_idx on public.sales(user_id, sold_at 
 create or replace function public.set_updated_at()
 returns trigger
 language plpgsql
-as $$
+set search_path = public
+as $
 begin
   new.updated_at = now();
   return new;
@@ -186,7 +187,8 @@ create or replace function public.plan_limits(p_plan text)
 returns table(search_limit integer, companies_per_search integer, ai_limit integer, renewable boolean)
 language sql
 immutable
-as $$
+set search_path = public
+as $
   select case p_plan
     when 'free' then 3
     when 'basic' then 60
@@ -342,3 +344,7 @@ revoke all on function public.consume_search(text,text,text,text,text,jsonb,inte
 revoke all on function public.consume_ai() from public;
 grant execute on function public.consume_search(text,text,text,text,text,jsonb,integer) to authenticated;
 grant execute on function public.consume_ai() to authenticated;
+
+revoke execute on function public.handle_new_user() from public;
+revoke execute on function public.handle_new_user() from anon;
+revoke execute on function public.handle_new_user() from authenticated;
