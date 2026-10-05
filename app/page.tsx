@@ -47,9 +47,15 @@ export default function Home() {
   const [aiUsage,setAiUsage] = useState<{used:number;limit:number|null}>({used:0,limit:5});
   const [pipeline,setPipeline] = useState<Record<string,string>>({});
   const [revenue,setRevenue] = useState(0);
+  const [theme,setTheme] = useState<"dark"|"light">("dark");
+  const [language,setLanguage] = useState("pt-BR");
 
   const notify = (message:string) => { setToast(message); window.setTimeout(() => setToast(""),2600); };
   useEffect(() => {
+    const savedTheme = window.localStorage.getItem("progressoacha-theme");
+    const savedLanguage = window.localStorage.getItem("progressoacha-language");
+    if (savedTheme === "light" || savedTheme === "dark") setTheme(savedTheme);
+    if (savedLanguage) setLanguage(savedLanguage);
     let mounted = true;
     (async () => {
       try {
@@ -90,6 +96,14 @@ export default function Home() {
     return () => { mounted = false; };
   }, []);
 
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+    window.localStorage.setItem("progressoacha-theme", theme);
+  }, [theme]);
+  useEffect(() => {
+    window.localStorage.setItem("progressoacha-language", language);
+  }, [language]);
+
   const logout = async () => {
     try { await createClient().auth.signOut(); } finally { window.location.href = "/login"; }
   };
@@ -120,7 +134,7 @@ export default function Home() {
         {active==="Agenda" && <Agenda leads={dbLeads} notify={notify}/>}
         {active==="Resultados" && <Results leads={dbLeads} pipeline={pipeline}/>}
         {active==="Receita" && <Revenue leads={dbLeads} revenue={revenue} notify={notify}/>}
-        {active==="Configurações" && <SettingsPage userName={userName} setUserName={setUserName} userEmail={userEmail} planCode={planCode} notify={notify}/>}  
+        {active==="Configurações" && <SettingsPage userName={userName} setUserName={setUserName} userEmail={userEmail} planCode={planCode} theme={theme} setTheme={setTheme} language={language} setLanguage={setLanguage} notify={notify}/>}  
       </div>
     </main>
     {toast && <div className="toast"><Check size={16}/>{toast}</div>}
@@ -179,7 +193,7 @@ function Leads({leads,query,setQuery,notify,searchUsage,setSearchUsage,planCode}
  <section className="panel"><div className="panelhead"><div><h2>Resultados da busca</h2><p>{filtered.length} empresas nesta visualização</p></div><span className="muted">Base inteligente · {planCode}</span></div>{filtered.map(l=><div className="lead" key={l.id}><button className="icon-action" onClick={async()=>{const supabase=createClient();const {data:userData}=await supabase.auth.getUser();if(!userData.user)return;const {error}=await supabase.from("pipeline_items").upsert({user_id:userData.user.id,lead_id:l.id,stage:"selected"},{onConflict:"user_id,lead_id"});notify(error?"Não foi possível adicionar ao CRM.":"Lead adicionado à prospecção.");}} aria-label={`Adicionar ${l.name} ao CRM`}><Target size={15}/></button><div className="company small">{l.name[0]}</div><div className="leadinfo"><b>{l.name}</b><span>{l.segment} · {l.location}</span></div><div className="site">{l.hasSite?<><i className="dot ok"/>Site encontrado</>:<><i className="dot warn"/>Site não identificado</>}</div><strong className="potential">{l.score}</strong><a className="icon-action" href={whatsappUrl(l.phone,commercialMessage(l.name))} target="_blank" rel="noopener noreferrer" aria-label={`Abrir WhatsApp para ${l.name}`}><MessageCircle size={15}/></a></div>)}</section></>;
 }
 function Pipeline({stage,setStage,pipeline,setPipeline,leads,notify}:{stage:string,setStage:(s:string)=>void,pipeline:Record<string,string>,setPipeline:React.Dispatch<React.SetStateAction<Record<string,string>>>,leads:LeadRow[],notify:(s:string)=>void}) {
- const data=leads.map(lead=>({lead,currentStage:pipeline[lead.id] || "Selecionado"}));
+ const data=leads.filter(lead => pipeline[lead.id]).map(lead=>({lead,currentStage:pipeline[lead.id] || "Selecionado"}));
  const visible=data.filter(item=>stage==="Tudo" || item.currentStage===stage);
  const registerSale=async(lead:LeadRow)=>{
    const raw=window.prompt(`Valor da venda para ${lead.name} (R$)`);
@@ -307,7 +321,7 @@ function Plans({notify}:{notify:(s:string)=>void}) {
  return <><Header eyebrow="PLANOS E ASSINATURAS" title="Escolha o ritmo do seu crescimento." text="Mais leads, mais conversas e mais oportunidades em um só lugar."/><div className="plans">{plans.map((p,i)=><div className={i===2?"plan featured":"plan"} key={p[0]}>{i===2&&<label>Mais escolhido</label>}{i===3&&<label className="gold">Desconto especial</label>}<span>{p[0]}</span><strong>{p[1]}<small>{i?"/mês":""}</small></strong><p>Para {i===0?"começar":i===1?"profissionais":"quem quer escalar"} sua prospecção.</p>{p.slice(2).map(f=><div className="feature" key={f}><Check size={14}/>{f}</div>)}<div className="feature"><Check size={14}/>Filtros avançados</div><div className="feature"><Check size={14}/>Minha Prospecção e Agenda</div><button className={i===2?"primary":"secondary"} onClick={()=>notify(i===2?"Plano Pro selecionado.":"Fluxo de assinatura preparado.")}>{i===0?"Plano atual":i===2?"Continuar com Pro":"Escolher plano"}</button></div>)}</div></>
 }
 
-function SettingsPage({userName,setUserName,userEmail,planCode,notify}:{userName:string;setUserName:(v:string)=>void;userEmail:string;planCode:string;notify:(s:string)=>void}) {
+function SettingsPage({userName,setUserName,userEmail,planCode,theme,setTheme,language,setLanguage,notify}:{userName:string;setUserName:(v:string)=>void;userEmail:string;planCode:string;theme:"dark"|"light";setTheme:(v:"dark"|"light")=>void;language:string;setLanguage:(v:string)=>void;notify:(s:string)=>void}) {
   const [name,setName]=useState(userName);
   const [password,setPassword]=useState("");
   const [saving,setSaving]=useState(false);
@@ -329,7 +343,7 @@ function SettingsPage({userName,setUserName,userEmail,planCode,notify}:{userName
     setSaving(true);
     try{const {error}=await createClient().auth.updateUser({password});if(error){notify("Não foi possível atualizar a senha.");return;}setPassword("");notify("Senha atualizada com segurança.");}finally{setSaving(false);}
   };
-  return <><Header eyebrow="SISTEMA" title="Configurações" text="Gerencie seu perfil e os dados de acesso do workspace."/><div className="settings-grid"><section className="panel settings-card"><div className="panelhead"><div><h2>Perfil</h2><p>Informações exibidas no workspace.</p></div></div><label className="field-label">Nome<input value={name} onChange={e=>setName(e.target.value)} /></label><label className="field-label">E-mail<input value={userEmail} readOnly /></label><label className="field-label">Plano<input value={planCode==="infinity"?"Infinity":planCode==="pro"?"Pro":planCode==="basic"?"Básico":"Gratuito"} readOnly /></label><button className="primary" disabled={saving} onClick={saveProfile}><Save size={14}/> Salvar perfil</button></section><section className="panel settings-card"><div className="panelhead"><div><h2>Segurança</h2><p>Troque sua senha sem sair do workspace.</p></div></div><label className="field-label">Nova senha<input value={password} onChange={e=>setPassword(e.target.value)} type="password" placeholder="Mínimo de 6 caracteres"/></label><button className="secondary" disabled={saving} onClick={changePassword}><LockKeyhole size={14}/> Atualizar senha</button></section></div></>;
+  return <><Header eyebrow="SISTEMA" title="Configurações" text="Gerencie seu perfil e os dados de acesso do workspace."/><div className="settings-grid"><section className="panel settings-card"><div className="panelhead"><div><h2>Perfil</h2><p>Informações exibidas no workspace.</p></div></div><label className="field-label">Nome<input value={name} onChange={e=>setName(e.target.value)} /></label><label className="field-label">E-mail<input value={userEmail} readOnly /></label><label className="field-label">Plano<input value={planCode==="infinity"?"Infinity":planCode==="pro"?"Pro":planCode==="basic"?"Básico":"Gratuito"} readOnly /></label><button className="primary" disabled={saving} onClick={saveProfile}><Save size={14}/> Salvar perfil</button></section><section className="panel settings-card"><div className="panelhead"><div><h2>Preferências</h2><p>Personalize a experiência do workspace.</p></div></div><div className="preference-row"><span>Idioma</span><select value={language} onChange={e=>setLanguage(e.target.value)}><option value="pt-BR">Português (Brasil)</option><option value="en-US">English</option><option value="es">Español</option></select></div><div className="preference-row"><span>Aparência</span><div className="segmented"><button className={theme==="dark"?"selected":""} onClick={()=>setTheme("dark")}>Escuro</button><button className={theme==="light"?"selected":""} onClick={()=>setTheme("light")}>Claro</button></div></div><div className="settings-note">As preferências são salvas neste dispositivo.</div></section><section className="panel settings-card"><div className="panelhead"><div><h2>Segurança</h2><p>Troque sua senha sem sair do workspace.</p></div></div><label className="field-label">Nova senha<input value={password} onChange={e=>setPassword(e.target.value)} type="password" placeholder="Mínimo de 6 caracteres"/></label><button className="secondary" disabled={saving} onClick={changePassword}><LockKeyhole size={14}/> Atualizar senha</button></section></div></>;
 }
 
 function Coming({title}:{title:string}){return <div className="coming"><div><Sparkles size={23}/></div><div className="eyebrow">MÓDULO PROGRESSO ACHA</div><h1>{title}</h1><p>A estrutura está conectada à plataforma. A próxima camada integra os dados persistentes, autenticação e serviços externos sem comprometer o design.</p></div>}
