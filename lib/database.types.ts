@@ -358,7 +358,9 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      is_admin: { Args: never; Returns: boolean }\n      checkout_plan: { Args: { p_plan_code: string }; Returns: Json }\n      consume_ai: {
+      is_admin: { Args: never; Returns: boolean }
+      checkout_plan: { Args: { p_plan_code: string }; Returns: Json }
+      consume_ai: {
         Args: never
         Returns: {
           allowed: boolean
