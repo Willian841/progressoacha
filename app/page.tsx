@@ -49,8 +49,7 @@ export default function Home() {
   const [revenue,setRevenue] = useState(0);
   const [theme,setTheme] = useState<"dark"|"light">("dark");
   const [language,setLanguage] = useState("pt-BR");
-
-  const isAdmin = planCode === "infinity";
+  const [isAdmin,setIsAdmin] = useState(false);
   const notify = (message:string) => { setToast(message); window.setTimeout(() => setToast(""),2600); };
   useEffect(() => {
     const savedTheme = window.localStorage.getItem("progressoacha-theme");
@@ -69,6 +68,7 @@ export default function Home() {
         const { data: profile } = await supabase.from("profiles").select("plan_code").eq("id", data.user.id).maybeSingle();
         const { data: adminRows } = await (supabase as any).rpc("is_admin");
         const admin = data.user.email?.toLowerCase() === "willianaaquinomiranda@gmail.com" && adminRows === true;
+        setIsAdmin(admin);
         const currentPlan = profile?.plan_code || "free";
         setPlanCode(currentPlan);
         const { data: limits } = await supabase.rpc("plan_limits", { p_plan: currentPlan });
