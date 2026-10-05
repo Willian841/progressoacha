@@ -65,7 +65,9 @@ export default function Home() {
         if (!data.user) { window.location.href = "/login"; return; }
         setUserName(data.user.user_metadata?.full_name || data.user.email?.split("@")[0] || "Usuário");
         setUserEmail(data.user.email || "");
-        const { data: profile } = await supabase.from("profiles").select("plan_code").eq("id", data.user.id).maybeSingle();
+        const { data: profile } = await supabase.from("profiles").select("plan_code,role").eq("id", data.user.id).maybeSingle();
+        const admin = data.user.email?.toLowerCase() === "willianaaquinomiranda@gmail.com" && profile?.role === "admin";
+        setIsAdmin(admin);
         const currentPlan = profile?.plan_code || "free";
         setPlanCode(currentPlan);
         const { data: limits } = await supabase.rpc("plan_limits", { p_plan: currentPlan });
@@ -111,7 +113,7 @@ export default function Home() {
     ["Visão Geral",[["Dashboard",LayoutDashboard],["Agenda",CalendarDays]]],
     ["Prospecção",[["Buscar Leads",Search],["Minha Prospecção",Target],["Resultados",BarChart3]]],
     ["Financeiro",[["Receita",CircleDollarSign],["Planos",Zap]]],
-    ["Sistema",[["Configurações",Settings]]]
+    ["Sistema",[["Configurações",Settings], ...(isAdmin ? [["Admin",LockKeyhole] as const] : [])]]
   ] as const;
 
   if (!authReady) return <main className="auth-shell"><section className="auth-card"><div className="auth-brand"><div className="logo"><Sparkles size={17}/></div><div><b>Progresso</b><span>ACHA</span></div></div><div className="auth-copy"><div className="eyebrow"><span className="pulse"/> CARREGANDO OPERAÇÃO</div><h1>Preparando seu workspace.</h1><p>Conectando seus dados com segurança.</p></div></section></main>;
@@ -134,7 +136,8 @@ export default function Home() {
         {active==="Agenda" && <Agenda leads={dbLeads} notify={notify}/>}
         {active==="Resultados" && <Results leads={dbLeads} pipeline={pipeline}/>}
         {active==="Receita" && <Revenue leads={dbLeads} revenue={revenue} notify={notify}/>}
-        {active==="Configurações" && <SettingsPage userName={userName} setUserName={setUserName} userEmail={userEmail} planCode={planCode} theme={theme} setTheme={setTheme} language={language} setLanguage={setLanguage} notify={notify}/>}  
+        {active==="Configurações" && <SettingsPage userName={userName} setUserName={setUserName} userEmail={userEmail} planCode={planCode} theme={theme} setTheme={setTheme} language={language} setLanguage={setLanguage} notify={notify}/>}
+        {active==="Admin" && isAdmin && <AdminPage notify={notify}/>}  
       </div>
     </main>
     {toast && <div className="toast"><Check size={16}/>{toast}</div>}
@@ -351,6 +354,45 @@ function SettingsPage({userName,setUserName,userEmail,planCode,theme,setTheme,la
     try{const {error}=await createClient().auth.updateUser({password});if(error){notify("Não foi possível atualizar a senha.");return;}setPassword("");notify("Senha atualizada com segurança.");}finally{setSaving(false);}
   };
   return <><Header eyebrow="SISTEMA" title="Configurações" text="Gerencie seu perfil e os dados de acesso do workspace."/><div className="settings-grid"><section className="panel settings-card"><div className="panelhead"><div><h2>Perfil</h2><p>Informações exibidas no workspace.</p></div></div><label className="field-label">Nome<input value={name} onChange={e=>setName(e.target.value)} /></label><label className="field-label">E-mail<input value={userEmail} readOnly /></label><label className="field-label">Plano<input value={planCode==="infinity"?"Infinity":planCode==="pro"?"Pro":planCode==="basic"?"Básico":"Gratuito"} readOnly /></label><button className="primary" disabled={saving} onClick={saveProfile}><Save size={14}/> Salvar perfil</button></section><section className="panel settings-card"><div className="panelhead"><div><h2>Preferências</h2><p>Personalize a experiência do workspace.</p></div></div><div className="preference-row"><span>Idioma</span><select value={language} onChange={e=>setLanguage(e.target.value)}><option value="pt-BR">Português (Brasil)</option><option value="en-US">English</option><option value="es">Español</option></select></div><div className="preference-row"><span>Aparência</span><div className="segmented"><button className={theme==="dark"?"selected":""} onClick={()=>setTheme("dark")}>Escuro</button><button className={theme==="light"?"selected":""} onClick={()=>setTheme("light")}>Claro</button></div></div><div className="settings-note">As preferências são salvas neste dispositivo.</div></section><section className="panel settings-card"><div className="panelhead"><div><h2>Segurança</h2><p>Troque sua senha sem sair do workspace.</p></div></div><label className="field-label">Nova senha<input value={password} onChange={e=>setPassword(e.target.value)} type="password" placeholder="Mínimo de 6 caracteres"/></label><button className="secondary" disabled={saving} onClick={changePassword}><LockKeyhole size={14}/> Atualizar senha</button></section></div></>;
+}
+
+function AdminPage({notify}:{notify:(s:string)=>void}) {
+  const [plans,setPlans]=useState<{plan_code:string;name:string;price:number;search_limit:number|null;companies_per_search:number;ai_limit:number|null}[]>([]);
+  const [gateway,setGateway]=useState({provider:"none",mode:"test",public_key:"",webhook_url:"",enabled:false});
+  const [loading,setLoading]=useState(true);
+  const [saving,setSaving]=useState("");
+  const load=async()=>{
+    const supabase=createClient();
+    const [p,g]=await Promise.all([
+      supabase.from("plan_settings").select("plan_code,name,price,search_limit,companies_per_search,ai_limit").order("price",{ascending:true}),
+      supabase.from("gateway_settings").select("provider,mode,public_key,webhook_url,enabled").eq("id",true).maybeSingle()
+    ]);
+    setPlans((p.data||[]) as typeof plans);
+    if(g.data) setGateway(g.data as typeof gateway);
+    setLoading(false);
+  };
+  useEffect(()=>{load();},[]);
+  const updatePlan=(code:string,key:string,value:string)=>{
+    setPlans(prev=>prev.map(p=>p.plan_code===code?{...p,[key]:key==="price"?Number(value.replace(",",".")):value===""?null:Number(value)}:p));
+  };
+  const savePlan=async(plan:typeof plans[number])=>{
+    setSaving(plan.plan_code);
+    const {error}=await createClient().from("plan_settings").update({price:plan.price,search_limit:plan.search_limit,companies_per_search:plan.companies_per_search,ai_limit:plan.ai_limit,updated_at:new Date().toISOString()}).eq("plan_code",plan.plan_code);
+    setSaving("");
+    notify(error?"Não foi possível salvar o plano.":"Plano atualizado com sucesso.");
+  };
+  const saveGateway=async()=>{
+    setSaving("gateway");
+    const {error}=await createClient().from("gateway_settings").update({...gateway,updated_at:new Date().toISOString()}).eq("id",true);
+    setSaving("");
+    notify(error?"Não foi possível salvar a configuração da gateway.":"Gateway salva como configuração futura.");
+  };
+  if(loading) return <div className="coming"><div><LockKeyhole size={23}/></div><h2>Carregando administração</h2><p>Validando configurações do workspace.</p></div>;
+  return <><Header eyebrow="ADMINISTRAÇÃO" title="Painel administrativo" text="Controle planos agora e deixe a infraestrutura de pagamentos pronta para a próxima fase."/>
+    <section className="panel admin-banner"><div><span className="eyebrow">ACESSO ADMINISTRATIVO</span><h2>Controle central do Progresso Acha</h2><p>Alterações aqui afetam a configuração comercial dos planos.</p></div><span className="admin-badge">ADMIN</span></section>
+    <div className="plans admin-plans">{plans.map(p=><section className="panel admin-plan" key={p.plan_code}><div className="panelhead"><div><h2>{p.name}</h2><p>{p.plan_code}</p></div><span className="admin-badge">{p.plan_code==="free"?"GRÁTIS":"EDITÁVEL"}</span></div><div className="form-grid admin-grid"><label className="field-label">Preço<input inputMode="decimal" value={p.price} onChange={e=>updatePlan(p.plan_code,"price",e.target.value)}/></label><label className="field-label">Buscas<input inputMode="numeric" value={p.search_limit ?? ""} placeholder="∞" onChange={e=>updatePlan(p.plan_code,"search_limit",e.target.value)}/></label><label className="field-label">Empresas / busca<input inputMode="numeric" value={p.companies_per_search} onChange={e=>updatePlan(p.plan_code,"companies_per_search",e.target.value)}/></label><label className="field-label">IA / mês<input inputMode="numeric" value={p.ai_limit ?? ""} placeholder="∞" onChange={e=>updatePlan(p.plan_code,"ai_limit",e.target.value)}/></label></div><button className="primary" disabled={saving===p.plan_code} onClick={()=>savePlan(p)}><Save size={14}/>{saving===p.plan_code?"Salvando...":"Salvar plano"}</button></section>)}</div>
+    <section className="panel gateway-panel"><div className="panelhead"><div><h2>Gateway de pagamento</h2><p>Estrutura pronta para conectar Stripe, Mercado Pago ou outro provedor no futuro.</p></div><span className="gateway-status">{gateway.enabled?"ATIVA":"NÃO CONFIGURADA"}</span></div><div className="form-grid"><label className="field-label">Provedor<select value={gateway.provider} onChange={e=>setGateway({...gateway,provider:e.target.value})}><option value="none">Nenhum</option><option value="stripe">Stripe</option><option value="mercado_pago">Mercado Pago</option><option value="other">Outro</option></select></label><label className="field-label">Modo<select value={gateway.mode} onChange={e=>setGateway({...gateway,mode:e.target.value})}><option value="test">Teste</option><option value="live">Produção</option></select></label><label className="field-label">Chave pública<input value={gateway.public_key||""} onChange={e=>setGateway({...gateway,public_key:e.target.value})} placeholder="Será configurada depois"/></label><label className="field-label">Webhook<input value={gateway.webhook_url||""} onChange={e=>setGateway({...gateway,webhook_url:e.target.value})} placeholder="https://..."/></label></div><label className="preference-row"><span>Gateway habilitada</span><input type="checkbox" checked={gateway.enabled} onChange={e=>setGateway({...gateway,enabled:e.target.checked})}/></label><p className="settings-note">Chaves secretas não serão armazenadas no navegador. Quando a gateway for criada, a integração deve usar servidor/Edge Function e secrets protegidos.</p><button className="primary" disabled={saving==="gateway"} onClick={saveGateway}><Save size={14}/>{saving==="gateway"?"Salvando...":"Salvar configuração"}</button></section>
+  </>;
 }
 
 function Coming({title}:{title:string}){return <div className="coming"><div><Sparkles size={23}/></div><div className="eyebrow">MÓDULO PROGRESSO ACHA</div><h1>{title}</h1><p>A estrutura está conectada à plataforma. A próxima camada integra os dados persistentes, autenticação e serviços externos sem comprometer o design.</p></div>}
