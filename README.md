@@ -60,3 +60,13 @@ Os limites são aplicados no banco por RPCs transacionais, não somente pela int
 5. QA de build/deploy com as variáveis de produção configuradas.
 
 As integrações externas não devem usar chaves secretas no cliente. Segredos de pagamento, IA e provedores de leads devem ficar no servidor/Edge Functions.
+
+## Checklist de deploy
+
+- Configure `NEXT_PUBLIC_SUPABASE_URL` e `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` no ambiente de produção.
+- Mantenha `NEXT_PUBLIC_SUPABASE_ANON_KEY` apenas como compatibilidade quando necessário.
+- Execute `npm run typecheck` antes do deploy.
+- Execute `npm run build` e valide o fluxo Login → Dashboard → CRM → Logout.
+- Configure as URLs de redirecionamento e recuperação de senha no Supabase Auth.
+- Nunca coloque chaves secretas de pagamento, IA ou provedores de leads em variáveis `NEXT_PUBLIC_*`.
+- Só habilite a gateway depois que o provedor e os webhooks reais estiverem configurados.
