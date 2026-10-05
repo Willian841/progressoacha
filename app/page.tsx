@@ -119,7 +119,7 @@ export default function Home() {
         {active==="Planos" && <Plans notify={notify}/>}
         {active==="Agenda" && <Agenda leads={dbLeads} notify={notify}/>}
         {active==="Resultados" && <Results leads={dbLeads} pipeline={pipeline}/>}
-        {active==="Receita" && <Revenue revenue={revenue} notify={notify}/>}
+        {active==="Receita" && <Revenue leads={dbLeads} revenue={revenue} notify={notify}/>}
         {active==="Configurações" && <SettingsPage userName={userName} setUserName={setUserName} userEmail={userEmail} planCode={planCode} notify={notify}/>}  
       </div>
     </main>
@@ -252,7 +252,7 @@ function Results({leads,pipeline}:{leads:LeadRow[];pipeline:Record<string,string
   return <><Header eyebrow="INTELIGÊNCIA COMERCIAL" title="Resultados" text="Veja como seus leads estão avançando pelo funil."/><div className="metrics">{counts.map(x=><div key={x.stage}><b>{x.count}</b><span>{x.stage}</span></div>)}</div><section className="panel"><div className="panelhead"><div><h2>Conversão do funil</h2><p>Distribuição atual dos leads por estágio.</p></div></div>{counts.map(x=><div className="lead" key={x.stage}><div className="leadinfo"><b>{x.stage}</b><span>{leads.length?Math.round(x.count/leads.length*100):0}% da base</span></div><strong className="potential">{x.count}</strong></div>)}</section></>;
 }
 
-function Revenue({revenue,notify}:{revenue:number;notify:(s:string)=>void}) {
+function Revenue({leads,revenue,notify}:{leads:LeadRow[];revenue:number;notify:(s:string)=>void}) {
   const [sales,setSales]=useState<{id:string;amount:number;status:string;sold_at:string;lead_id:string|null}[]>([]);
   const [open,setOpen]=useState(false);
   const [leadId,setLeadId]=useState("");
@@ -286,7 +286,7 @@ function Revenue({revenue,notify}:{revenue:number;notify:(s:string)=>void}) {
   };
 
   return <><Header eyebrow="FINANCEIRO" title="Receita" text="Acompanhe vendas e faturamento gerado pela prospecção." action={<button className="primary" onClick={()=>setOpen(v=>!v)}><CircleDollarSign size={16}/> Registrar venda</button>}/>
-  {open&&<section className="panel activity-form"><div className="panelhead"><div><h2>Registrar venda</h2><p>O lançamento fica salvo no histórico financeiro.</p></div></div><div className="form-grid"><input value={amount} onChange={e=>setAmount(e.target.value)} placeholder="Valor da venda · R$" inputMode="decimal"/><select value={status} onChange={e=>setStatus(e.target.value)}><option value="won">Ganha</option><option value="pending">Pendente</option><option value="cancelled">Cancelada</option></select><input value={soldAt} onChange={e=>setSoldAt(e.target.value)} type="datetime-local"/></div><div className="form-actions"><button className="secondary" onClick={()=>setOpen(false)}>Cancelar</button><button className="primary" disabled={saving} onClick={registerSale}><Save size={14}/> {saving?"Salvando...":"Salvar venda"}</button></div></section>}
+  {open&&<section className="panel activity-form"><div className="panelhead"><div><h2>Registrar venda</h2><p>O lançamento fica salvo no histórico financeiro.</p></div></div><div className="form-grid"><select value={leadId} onChange={e=>setLeadId(e.target.value)}><option value="">Sem lead vinculado</option>{leads.map(l=><option key={l.id} value={l.id}>{l.name}</option>)}</select><input value={amount} onChange={e=>setAmount(e.target.value)} placeholder="Valor da venda · R$" inputMode="decimal"/><select value={status} onChange={e=>setStatus(e.target.value)}><option value="won">Ganha</option><option value="pending">Pendente</option><option value="cancelled">Cancelada</option></select><input value={soldAt} onChange={e=>setSoldAt(e.target.value)} type="datetime-local"/></div><div className="form-actions"><button className="secondary" onClick={()=>setOpen(false)}>Cancelar</button><button className="primary" disabled={saving} onClick={registerSale}><Save size={14}/> {saving?"Salvando...":"Salvar venda"}</button></div></section>}
   <div className="stats"><Stat icon={CircleDollarSign} label="Receita ganha" value={revenue.toLocaleString("pt-BR",{style:"currency",currency:"BRL"})} note="Status ganho"/><Stat icon={TrendingUp} label="Vendas registradas" value={sales.filter(s=>s.status==="won").length.toString()} note="No histórico"/></div><section className="panel"><div className="panelhead"><div><h2>Histórico de vendas</h2><p>Últimos lançamentos do workspace.</p></div></div>{sales.length?sales.map(s=><div className="lead" key={s.id}><div className="leadinfo"><b>{Number(s.amount).toLocaleString("pt-BR",{style:"currency",currency:"BRL"})}</b><span>{new Date(s.sold_at).toLocaleDateString("pt-BR")}</span></div><span className="muted">{s.status}</span></div>):<div className="coming"><div><CircleDollarSign size={23}/></div><h2>Nenhuma venda registrada</h2><p>As vendas adicionadas ao CRM aparecerão aqui.</p></div>}</section></>;
 }
 
