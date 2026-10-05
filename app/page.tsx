@@ -130,7 +130,7 @@ export default function Home() {
     <main className="main">
       <header><button className="hamb" onClick={()=>setMobile(true)}><Menu/></button><div className="crumb">Workspace <ChevronRight size={13}/> <b>{active}</b></div><div className="actions"><button><Globe2 size={17}/></button><button className="notify"><MessageCircle size={17}/><i/></button><div className="avatar">{userName.slice(0,2).toUpperCase()}</div></div></header>
       <div className="content">
-        {active==="Dashboard" && <Dashboard userName={userName} leads={dbLeads} pipeline={pipeline} revenue={revenue} onSearch={()=>setActive("Buscar Leads")} notify={notify}/>}
+        {active==="Dashboard" && <Dashboard userName={userName} leads={dbLeads} pipeline={pipeline} revenue={revenue} onSearch={()=>setActive("Buscar Leads")} onPipeline={()=>setActive("Minha Prospecção")} notify={notify}/>}
         {active==="Buscar Leads" && <Leads leads={dbLeads} query={query} setQuery={setQuery} notify={notify} searchUsage={searchUsage} setSearchUsage={setSearchUsage} planCode={planCode}/>}
         {active==="Minha Prospecção" && <Pipeline stage={stage} setStage={setStage} pipeline={pipeline} setPipeline={setPipeline} leads={dbLeads} notify={notify}/>}
         {active==="Planos" && <Plans notify={notify}/>}
@@ -149,7 +149,7 @@ function Header({eyebrow,title,text,action}:{eyebrow:string,title:string,text:st
   return <div className="heading"><div><div className="eyebrow"><span className="pulse"/> {eyebrow}</div><h1>{title}</h1><p>{text}</p></div>{action}</div>
 }
 
-function Dashboard({userName,leads,pipeline,revenue,onSearch,notify}:{userName:string,leads:LeadRow[],pipeline:Record<string,string>,revenue:number,onSearch:()=>void,notify:(s:string)=>void}) {
+function Dashboard({userName,leads,pipeline,revenue,onSearch,onPipeline,notify}:{userName:string,leads:LeadRow[],pipeline:Record<string,string>,revenue:number,onSearch:()=>void,onPipeline:()=>void,notify:(s:string)=>void}) {
   return <><Header eyebrow="VISÃO GERAL" title={`Bom dia, ${userName} ✦`} text="Transforme oportunidades em conversas e conversas em vendas." action={<button className="primary" onClick={onSearch}><Search size={16}/> Buscar novos leads</button>}/>
     <div className="stats">
     <Stat icon={Users} label="Leads encontrados" value={leads.length.toLocaleString("pt-BR")} note="No seu workspace"/>
@@ -157,7 +157,7 @@ function Dashboard({userName,leads,pipeline,revenue,onSearch,notify}:{userName:s
     <Stat icon={TrendingUp} label="Taxa de resposta" value={`${Object.keys(pipeline).length ? Math.round((Object.values(pipeline).filter(s=>["Respondeu","Reunião","Proposta","Venda"].includes(s)).length / Object.keys(pipeline).length) * 100 : 0)}%`} note="Baseada no CRM"/>
     <Stat icon={CircleDollarSign} label="Receita gerada" value={revenue.toLocaleString("pt-BR",{style:"currency",currency:"BRL"})} note="Vendas marcadas como ganhas"/>
   </div>
-    <div className="dashboard-grid"><section className="panel"><div className="panelhead"><div><h2>Funil comercial</h2><p>Distribuição real dos leads salvos no CRM.</p></div><button className="link" onClick={()=>notify("Abra Minha Prospecção pelo menu lateral.")}>Abrir CRM <ArrowUpRight size={13}/></button></div><div className="funnel">{stages.slice(1).map(s=>{const count=Object.values(pipeline).filter(v=>v===s).length;const pct=Object.keys(pipeline).length?Math.round(count/Object.keys(pipeline).length*100):0;return <div className="funnel-row" key={s}><div><span>{s}</span><b>{count}</b></div><div className="funnel-track"><i style={{width:(Math.max(pct,count?6:0)+"%")}}/></div></div>})}</div></section>
+    <div className="dashboard-grid"><section className="panel"><div className="panelhead"><div><h2>Funil comercial</h2><p>Distribuição real dos leads salvos no CRM.</p></div><button className="link" onClick={onPipeline}>Abrir CRM <ArrowUpRight size={13}/></button></div><div className="funnel">{stages.slice(1).map(s=>{const count=Object.values(pipeline).filter(v=>v===s).length;const pct=Object.keys(pipeline).length?Math.round(count/Object.keys(pipeline).length*100):0;return <div className="funnel-row" key={s}><div><span>{s}</span><b>{count}</b></div><div className="funnel-track"><i style={{width:(Math.max(pct,count?6:0)+"%")}}/></div></div>})}</div></section>
     <section className="panel"><div className="panelhead"><div><h2>Oportunidades quentes</h2><p>Maior potencial de conversão</p></div><button className="link" onClick={onSearch}>Ver todos <ArrowUpRight size={13}/></button></div>{leads.slice(0,3).map(l=><div className="opportunity" key={l.id}><div className="company">{l.name[0]}</div><div className="company-info"><b>{l.name}</b><span>{l.segment} · {l.location}</span></div><strong>{l.score}<small>score</small></strong></div>)}</section></div>
     <div className="next"><Sparkles size={19}/><div><b>Seu próximo passo</b><span>Você tem {leads.filter(l=>!l.hasSite).length} leads sem site prontos para uma abordagem comercial.</span></div><button onClick={()=>notify(`${leads.filter(l=>!l.hasSite).length} oportunidades encontradas.`)}>Encontrar oportunidades <ArrowUpRight size={14}/></button></div>
   </>
