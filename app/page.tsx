@@ -100,6 +100,17 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
+    if (!authReady) return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("billing") !== "return") return;
+    const plan = params.get("plan");
+    const label = plan === "infinity" ? "Infinity" : plan === "pro" ? "Pro" : plan === "basic" ? "Básico" : "seu plano";
+    notify(`Retorno do Mercado Pago recebido. Aguardando confirmação da assinatura ${label}.`);
+    window.history.replaceState({}, document.title, window.location.pathname);
+    setActive("Planos");
+  }, [authReady]);
+
+  useEffect(() => {
     document.documentElement.dataset.theme = theme;
     window.localStorage.setItem("progressoacha-theme", theme);
   }, [theme]);
