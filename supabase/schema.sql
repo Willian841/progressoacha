@@ -1,0 +1,204 @@
+-- Progresso Acha — banco base
+-- Execute em um projeto Supabase antes de ativar persistência no app.
+
+create extension if not exists pgcrypto;
+
+create table if not exists public.profiles (
+  id uuid primary key references auth.users(id) on delete cascade,
+  full_name text,
+  plan_code text not null default 'free' check (plan_code in ('free','basic','pro','infinity')),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists public.leads (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  name text not null,
+  segment text,
+  country text,
+  state text,
+  city text,
+  area text,
+  phone text,
+  website text,
+  website_status text not null default 'unknown' check (website_status in ('found','not_found','unknown')),
+  opportunity_score integer not null default 0 check (opportunity_score between 0 and 100),
+  source text not null default 'manual',
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists public.pipeline_items (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  lead_id uuid not null references public.leads(id) on delete cascade,
+  stage text not null default 'selected' check (stage in ('selected','contacted','replied','meeting','proposal','sale','discarded')),
+  notes text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique(user_id, lead_id)
+);
+
+create table if not exists public.activities (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  lead_id uuid references public.leads(id) on delete cascade,
+  type text not null check (type in ('note','call','whatsapp','meeting','task')),
+  content text,
+  scheduled_at timestamptz,
+  completed_at timestamptz,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.searches (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  segment text,
+  country text,
+  state text,
+  city text,
+  area text,
+  filters jsonb not null default '{}'::jsonb,
+  result_count integer not null default 0,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.usage_monthly (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  month_start date not null,
+  search_count integer not null default 0,
+  ai_count integer not null default 0,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique(user_id, month_start)
+);
+
+create table if not exists public.sales (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  lead_id uuid references public.leads(id) on delete set null,
+  amount numeric(12,2) not null default 0 check (amount >= 0),
+  status text not null default 'won' check (status in ('won','pending','cancelled')),
+  sold_at timestamptz not null default now(),
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.subscriptions (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null unique references auth.users(id) on delete cascade,
+  plan_code text not null default 'free' check (plan_code in ('free','basic','pro','infinity')),
+  status text not null default 'active',
+  provider text,
+  external_id text,
+  current_period_start timestamptz,
+  current_period_end timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create index if not exists leads_user_created_idx on public.leads(user_id, created_at desc);
+create index if not exists leads_search_idx on public.leads(user_id, segment, state, city);
+create index if not exists pipeline_user_stage_idx on public.pipeline_items(user_id, stage);
+create index if not exists activities_user_schedule_idx on public.activities(user_id, scheduled_at);
+create index if not exists searches_user_created_idx on public.searches(user_id, created_at desc);
+create index if not exists sales_user_sold_idx on public.sales(user_id, sold_at desc);
+
+create or replace function public.set_updated_at()
+returns trigger
+language plpgsql
+as $$
+begin
+  new.updated_at = now();
+  return new;
+end;
+$$;
+
+drop trigger if exists profiles_updated_at on public.profiles;
+create trigger profiles_updated_at before update on public.profiles for each row execute function public.set_updated_at();
+drop trigger if exists leads_updated_at on public.leads;
+create trigger leads_updated_at before update on public.leads for each row execute function public.set_updated_at();
+drop trigger if exists pipeline_updated_at on public.pipeline_items;
+create trigger pipeline_updated_at before update on public.pipeline_items for each row execute function public.set_updated_at();
+drop trigger if exists usage_updated_at on public.usage_monthly;
+create trigger usage_updated_at before update on public.usage_monthly for each row execute function public.set_updated_at();
+drop trigger if exists subscriptions_updated_at on public.subscriptions;
+create trigger subscriptions_updated_at before update on public.subscriptions for each row execute function public.set_updated_at();
+
+create or replace function public.handle_new_user()
+returns trigger
+language plpgsql
+security definer set search_path = public
+as $$
+begin
+  insert into public.profiles (id, full_name)
+  values (new.id, new.raw_user_meta_data ->> 'full_name')
+  on conflict (id) do nothing;
+
+  insert into public.subscriptions (user_id, plan_code, status)
+  values (new.id, 'free', 'active')
+  on conflict (user_id) do nothing;
+
+  return new;
+end;
+$$;
+
+drop trigger if exists on_auth_user_created on auth.users;
+create trigger on_auth_user_created
+after insert on auth.users
+for each row execute function public.handle_new_user();
+
+alter table public.profiles enable row level security;
+alter table public.leads enable row level security;
+alter table public.pipeline_items enable row level security;
+alter table public.activities enable row level security;
+alter table public.searches enable row level security;
+alter table public.usage_monthly enable row level security;
+alter table public.sales enable row level security;
+alter table public.subscriptions enable row level security;
+
+drop policy if exists profiles_self on public.profiles;
+create policy profiles_self on public.profiles for all using (id = auth.uid()) with check (id = auth.uid());
+
+drop policy if exists leads_owner on public.leads;
+create policy leads_owner on public.leads for all using (user_id = auth.uid()) with check (user_id = auth.uid());
+
+drop policy if exists pipeline_owner on public.pipeline_items;
+create policy pipeline_owner on public.pipeline_items for all using (user_id = auth.uid()) with check (user_id = auth.uid());
+
+drop policy if exists activities_owner on public.activities;
+create policy activities_owner on public.activities for all using (user_id = auth.uid()) with check (user_id = auth.uid());
+
+drop policy if exists searches_owner on public.searches;
+create policy searches_owner on public.searches for all using (user_id = auth.uid()) with check (user_id = auth.uid());
+
+drop policy if exists usage_owner on public.usage_monthly;
+create policy usage_owner on public.usage_monthly for all using (user_id = auth.uid()) with check (user_id = auth.uid());
+
+drop policy if exists sales_owner on public.sales;
+create policy sales_owner on public.sales for all using (user_id = auth.uid()) with check (user_id = auth.uid());
+
+drop policy if exists subscriptions_owner on public.subscriptions;
+create policy subscriptions_owner on public.subscriptions for select using (user_id = auth.uid());
+
+create or replace function public.plan_limits(p_plan text)
+returns table(search_limit integer, companies_per_search integer, ai_limit integer, renewable boolean)
+language sql
+immutable
+as $$
+  select case p_plan
+    when 'free' then 3
+    when 'basic' then 60
+    when 'pro' then 300
+    when 'infinity' then null
+  end,
+  case when p_plan = 'free' then 20 else 40 end,
+  case p_plan
+    when 'free' then 5
+    when 'basic' then 20
+    when 'pro' then 200
+    when 'infinity' then 1000
+  end,
+  p_plan <> 'free';
+$$;
