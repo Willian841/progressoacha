@@ -59,7 +59,7 @@ export default function Home() {
     let mounted = true;
     (async () => {
       try {
-        const supabase = createClient();
+        const supabase = createClient() as any;
         const { data } = await supabase.auth.getUser();
         if (!mounted) return;
         if (!data.user) { window.location.href = "/login"; return; }
