@@ -14,10 +14,12 @@ A primeira fundação visual e de navegação já está publicada na branch main
 - Planos Gratuito, Básico, Pro e Infinity
 - Feedback visual para ações
 - Design responsivo
+- Login, cadastro, recuperação e redefinição de senha preparados para Supabase
+- Logout conectado ao Supabase
 - Base de componentes preparada para integração com dados persistentes
 
 ### Próximas camadas
-1. Autenticação e recuperação de senha
+1. Conectar o projeto ao Supabase e configurar variáveis de ambiente
 2. Banco de dados e modelo de assinatura
 3. API de leads e filtros avançados
 4. Persistência do CRM e agenda
