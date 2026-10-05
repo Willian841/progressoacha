@@ -193,7 +193,11 @@ as $$
     when 'pro' then 300
     when 'infinity' then null
   end,
-  case when p_plan = 'free' then 20 else 40 end,
+  case p_plan
+    when 'free' then 20
+    when 'basic' then 30
+    else 40
+  end,
   case p_plan
     when 'free' then 5
     when 'basic' then 20
