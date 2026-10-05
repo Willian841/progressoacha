@@ -360,16 +360,19 @@ function SettingsPage({userName,setUserName,userEmail,planCode,theme,setTheme,la
 function AdminPage({notify}:{notify:(s:string)=>void}) {
   const [plans,setPlans]=useState<{plan_code:string;name:string;price:number;search_limit:number|null;companies_per_search:number;ai_limit:number|null}[]>([]);
   const [gateway,setGateway]=useState({provider:"none",mode:"test",public_key:"",webhook_url:"",enabled:false});
+  const [users,setUsers]=useState<{id:string;email:string|null;full_name:string|null;role:string;plan_code:string;subscription_status:string|null;provider:string|null;current_period_end:string|null;created_at:string}[]>([]);
   const [loading,setLoading]=useState(true);
   const [saving,setSaving]=useState("");
   const load=async()=>{
     const supabase=createClient() as any;
-    const [p,g]=await Promise.all([
+    const [p,g,u]=await Promise.all([
       supabase.from("plan_settings").select("plan_code,name,price,search_limit,companies_per_search,ai_limit").order("price",{ascending:true}),
-      supabase.from("gateway_settings").select("provider,mode,public_key,webhook_url,enabled").eq("id",true).maybeSingle()
+      supabase.from("gateway_settings").select("provider,mode,public_key,webhook_url,enabled").eq("id",true).maybeSingle(),
+      supabase.from("admin_user_overview").select("id,email,full_name,role,plan_code,subscription_status,provider,current_period_end,created_at").order("created_at",{ascending:false}).limit(50)
     ]);
     setPlans((p.data||[]) as typeof plans);
     if(g.data) setGateway(g.data as typeof gateway);
+    setUsers((u.data||[]) as typeof users);
     setLoading(false);
   };
   useEffect(()=>{load();},[]);
