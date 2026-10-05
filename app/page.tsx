@@ -378,13 +378,17 @@ function AdminPage({notify}:{notify:(s:string)=>void}) {
   };
   const savePlan=async(plan:typeof plans[number])=>{
     setSaving(plan.plan_code);
-    const {error}=await createClient().from("plan_settings").update({price:plan.price,search_limit:plan.search_limit,companies_per_search:plan.companies_per_search,ai_limit:plan.ai_limit,updated_at:new Date().toISOString()}).eq("plan_code",plan.plan_code);
+    const supabase=createClient() as any; const {data:userData}=await supabase.auth.getUser();
+    const {error}=await supabase.from("plan_settings").update({price:plan.price,search_limit:plan.search_limit,companies_per_search:plan.companies_per_search,ai_limit:plan.ai_limit,updated_at:new Date().toISOString()}).eq("plan_code",plan.plan_code);
+    if(!error&&userData.user) await supabase.from("admin_audit_log").insert({admin_user_id:userData.user.id,action:"update_plan",target_type:"plan",target_id:plan.plan_code,details:{price:plan.price,search_limit:plan.search_limit,companies_per_search:plan.companies_per_search,ai_limit:plan.ai_limit}});
     setSaving("");
     notify(error?"Não foi possível salvar o plano.":"Plano atualizado com sucesso.");
   };
   const saveGateway=async()=>{
     setSaving("gateway");
-    const {error}=await createClient().from("gateway_settings").update({...gateway,updated_at:new Date().toISOString()}).eq("id",true);
+    const supabase=createClient() as any; const {data:userData}=await supabase.auth.getUser();
+    const {error}=await supabase.from("gateway_settings").update({...gateway,updated_at:new Date().toISOString()}).eq("id",true);
+    if(!error&&userData.user) await supabase.from("admin_audit_log").insert({admin_user_id:userData.user.id,action:"update_gateway",target_type:"gateway",target_id:"default",details:{provider:gateway.provider,mode:gateway.mode,enabled:gateway.enabled}});
     setSaving("");
     notify(error?"Não foi possível salvar a configuração da gateway.":"Gateway salva como configuração futura.");
   };
