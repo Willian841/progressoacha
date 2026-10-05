@@ -462,3 +462,6 @@ revoke all on public.billing_events from anon, public, authenticated;
 DO $$ BEGIN alter table public.plan_settings add constraint plan_settings_search_limit_check check (search_limit is null or search_limit >= 0); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 DO $$ BEGIN alter table public.plan_settings add constraint plan_settings_companies_per_search_check check (companies_per_search > 0); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 DO $$ BEGIN alter table public.plan_settings add constraint plan_settings_ai_limit_check check (ai_limit is null or ai_limit >= 0); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+drop policy if exists billing_events_no_client_access on public.billing_events;
+create policy billing_events_no_client_access on public.billing_events for all to authenticated using (false) with check (false);
