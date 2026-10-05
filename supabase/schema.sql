@@ -458,3 +458,7 @@ create table if not exists public.billing_events(id uuid primary key default gen
 create unique index if not exists billing_events_provider_event_uidx on public.billing_events(provider,event_id);
 alter table public.billing_events enable row level security;
 revoke all on public.billing_events from anon, public, authenticated;
+
+DO $$ BEGIN alter table public.plan_settings add constraint plan_settings_search_limit_check check (search_limit is null or search_limit >= 0); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+DO $$ BEGIN alter table public.plan_settings add constraint plan_settings_companies_per_search_check check (companies_per_search > 0); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+DO $$ BEGIN alter table public.plan_settings add constraint plan_settings_ai_limit_check check (ai_limit is null or ai_limit >= 0); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
