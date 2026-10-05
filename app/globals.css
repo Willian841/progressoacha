@@ -30,3 +30,13 @@
 :root[data-theme="light"] .segmented button{color:#64748b}
 :root[data-theme="light"] .segmented button.selected{background:#e0f8fb;color:#087d88}
 @media(max-width:760px){.preference-row{align-items:flex-start;flex-direction:column}.preference-row select{width:100%}.segmented{width:100%}.segmented button{flex:1}}
+
+
+.funnel{display:grid;gap:13px;padding:4px 0 2px}
+.funnel-row{display:grid;gap:6px}
+.funnel-row>div:first-child{display:flex;align-items:center;justify-content:space-between}
+.funnel-row span{font-size:9px;color:#8996a8}
+.funnel-row b{font-size:10px;color:#dbe6ef}
+.funnel-track{height:7px;border-radius:99px;background:#101823;overflow:hidden;border:1px solid #1d2938}
+.funnel-track i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,#00a9bb,#00f2fe);min-width:0}
+:root[data-theme="light"] .funnel-track{background:#eef2f6;border-color:#dce3ea}
