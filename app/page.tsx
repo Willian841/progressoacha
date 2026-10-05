@@ -1,10 +1,11 @@
 "use client";
 
 import { useState } from "react";
+import { createClient } from "../lib/supabase-browser";
 import {
   ArrowUpRight, BarChart3, CalendarDays, Check, ChevronRight, CircleDollarSign,
   Globe2, LayoutDashboard, Menu, MessageCircle, Search, Settings, Sparkles,
-  Target, TrendingUp, Users, X, Zap
+  Target, TrendingUp, Users, X, Zap, LogOut
 } from "lucide-react";
 
 const leads = [
@@ -36,6 +37,9 @@ export default function Home() {
   const [stage,setStage] = useState("Tudo");
 
   const notify = (message:string) => { setToast(message); window.setTimeout(() => setToast(""),2600); };
+  const logout = async () => {
+    try { await createClient().auth.signOut(); } finally { window.location.href = "/login"; }
+  };
   const nav = [
     ["Visão Geral",[["Dashboard",LayoutDashboard],["Agenda",CalendarDays]]],
     ["Prospecção",[["Buscar Leads",Search],["Minha Prospecção",Target],["Resultados",BarChart3]]],
@@ -48,7 +52,7 @@ export default function Home() {
       <div className="brand"><div className="logo"><Sparkles size={17}/></div><div><b>Progresso</b><span>ACHA</span></div><button className="close" onClick={()=>setMobile(false)}><X/></button></div>
       <div className="workspace"><small>WORKSPACE</small><button>Meu negócio <ChevronRight size={14}/></button></div>
       <nav>{nav.map(([group,items])=><div className="navgroup" key={group}><label>{group}</label>{items.map(([label,Icon])=><button key={label} className={active===label?"nav active":"nav"} onClick={()=>{setActive(label);setMobile(false)}}><Icon size={17}/><span>{label}</span>{label==="Buscar Leads"&&<em>12</em>}</button>)}</div>)}</nav>
-      <div className="sidebottom"><div className="mini-plan"><small>PLANO ATUAL</small><b>Pro</b><button onClick={()=>setActive("Planos")}>Upgrade <ArrowUpRight size={12}/></button></div><button className="nav"><Settings size={17}/><span>Preferências</span></button><button className="nav danger"><span>↪</span><span>Sair</span></button></div>
+      <div className="sidebottom"><div className="mini-plan"><small>PLANO ATUAL</small><b>Pro</b><button onClick={()=>setActive("Planos")}>Upgrade <ArrowUpRight size={12}/></button></div><button className="nav"><Settings size={17}/><span>Preferências</span></button><button className="nav danger" onClick={logout}><LogOut size={17}/><span>Sair</span></button></div>
     </aside>
 
     <main className="main">
