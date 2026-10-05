@@ -67,7 +67,7 @@ export default function Home() {
         const { data: usageRow } = await supabase.from("usage_monthly").select("search_count,ai_count").eq("user_id", data.user.id).eq("month_start", monthStart.toISOString().slice(0,10)).maybeSingle();
         setSearchUsage({used: currentPlan === "free" ? (totalSearches || 0) : (usageRow?.search_count || 0), limit: limitRow?.search_limit ?? null});
         setAiUsage({used: usageRow?.ai_count || 0, limit: limitRow?.ai_limit ?? null});
-        let result = await supabase.from("leads").select("id,name,segment,city,state,website_status,opportunity_score,phone").order("opportunity_score",{ascending:false}).limit(50);
+        let result = await supabase.from("leads").select("id,name,segment,country,state,city,area,website_status,opportunity_score,phone").order("opportunity_score",{ascending:false}).limit(50);
         if (!result.data?.length) {
           const seed = leads.map(l => ({user_id:data.user.id,name:l[0],segment:l[1],city:l[2].split(", ")[0] || null,state:l[2].split(", ")[1] || null,country:"Brasil",phone:l[5],website_status:l[3] ? "found" : "not_found",opportunity_score:l[4],source:"demo"}));
           await supabase.from("leads").insert(seed);
