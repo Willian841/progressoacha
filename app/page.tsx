@@ -131,7 +131,7 @@ export default function Home() {
       <header><button className="hamb" onClick={()=>setMobile(true)}><Menu/></button><div className="crumb">Workspace <ChevronRight size={13}/> <b>{active}</b></div><div className="actions"><button><Globe2 size={17}/></button><button className="notify"><MessageCircle size={17}/><i/></button><div className="avatar">{userName.slice(0,2).toUpperCase()}</div></div></header>
       <div className="content">
         {active==="Dashboard" && <Dashboard userName={userName} leads={dbLeads} pipeline={pipeline} revenue={revenue} onSearch={()=>setActive("Buscar Leads")} onPipeline={()=>setActive("Minha Prospecção")} notify={notify}/>}
-        {active==="Buscar Leads" && <Leads leads={dbLeads} query={query} setQuery={setQuery} notify={notify} searchUsage={searchUsage} setSearchUsage={setSearchUsage} planCode={planCode}/>}
+        {active==="Buscar Leads" && <Leads leads={dbLeads} query={query} setQuery={setQuery} notify={notify} searchUsage={searchUsage} setSearchUsage={setSearchUsage} planCode={planCode} setPipeline={setPipeline} />}
         {active==="Minha Prospecção" && <Pipeline stage={stage} setStage={setStage} pipeline={pipeline} setPipeline={setPipeline} leads={dbLeads} notify={notify}/>}
         {active==="Planos" && <Plans notify={notify}/>}
         {active==="Agenda" && <Agenda leads={dbLeads} notify={notify}/>}
@@ -182,7 +182,7 @@ function Leads({leads,query,setQuery,notify,searchUsage,setSearchUsage,planCode,
      && l.score >= Number(scoreFilter);
  });
  const runSearch=async()=>{
-   const supabase=createClient();
+   const supabase=createClient() as any;
    const {data,error}=await supabase.rpc("consume_search",{p_segment:segmentFilter||null,p_country:"Brasil",p_state:stateFilter||null,p_city:cityFilter||null,p_area:null,p_filters:{query,site:siteFilter,min_score:Number(scoreFilter)},p_result_count:filtered.length});
    if(error||!data?.[0]){notify("Não foi possível validar o uso da busca.");return;}
    const result=data[0];
@@ -194,7 +194,7 @@ function Leads({leads,query,setQuery,notify,searchUsage,setSearchUsage,planCode,
  <div className="searchbar"><div><Search size={18}/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Ex.: restaurantes em Salvador..."/><kbd>⌘ K</kbd></div><button className={advanced?"secondary active-filter":"secondary"} onClick={()=>setAdvanced(v=>!v)}><Settings size={16}/> Filtros avançados</button><button className="primary" onClick={runSearch}>Buscar</button></div>
  {advanced && <div className="advanced-filters"><input value={segmentFilter} onChange={e=>setSegmentFilter(e.target.value)} placeholder="Segmento"/><input value={stateFilter} onChange={e=>setStateFilter(e.target.value.toUpperCase())} placeholder="UF"/><input value={cityFilter} onChange={e=>setCityFilter(e.target.value)} placeholder="Cidade"/><select value={siteFilter} onChange={e=>setSiteFilter(e.target.value)}><option value="all">Qualquer site</option><option value="without">Sem site</option><option value="with">Com site</option></select><select value={scoreFilter} onChange={e=>setScoreFilter(e.target.value)}><option value="0">Qualquer score</option><option value="80">Score 80+</option><option value="90">Score 90+</option></select></div>}
  <div className="metrics"><div><b>{filtered.length}</b><span>Empresas encontradas</span></div><div><b className="green">{filtered.filter(l=>!l.hasSite).length}</b><span>Sem site</span></div><div><b>{filtered.filter(l=>l.hasSite).length}</b><span>Com site</span></div><div><b className="cyan">{filtered.filter(l=>l.score>=80).length}</b><span>Oportunidades altas</span></div></div>
- <section className="panel"><div className="panelhead"><div><h2>Resultados da busca</h2><p>{filtered.length} empresas nesta visualização</p></div><span className="muted">Base inteligente · {planCode}</span></div>{filtered.map(l=><div className="lead" key={l.id}><button className="icon-action" onClick={async()=>{const supabase=createClient();const {data:userData}=await supabase.auth.getUser();if(!userData.user)return;const {error}=await supabase.from("pipeline_items").upsert({user_id:userData.user.id,lead_id:l.id,stage:"selected"},{onConflict:"user_id,lead_id"});if(error){notify("Não foi possível adicionar ao CRM.");return;}setPipeline(prev=>({...prev,[l.id]:"Selecionado"}));notify("Lead adicionado à prospecção.");}} aria-label={`Adicionar ${l.name} ao CRM`}><Target size={15}/></button><div className="company small">{l.name[0]}</div><div className="leadinfo"><b>{l.name}</b><span>{l.segment} · {l.location}</span></div><div className="site">{l.hasSite?<><i className="dot ok"/>Site encontrado</>:<><i className="dot warn"/>Site não identificado</>}</div><strong className="potential">{l.score}</strong><a className="icon-action" href={whatsappUrl(l.phone,commercialMessage(l.name))} target="_blank" rel="noopener noreferrer" aria-label={`Abrir WhatsApp para ${l.name}`}><MessageCircle size={15}/></a></div>)}</section></>;
+ <section className="panel"><div className="panelhead"><div><h2>Resultados da busca</h2><p>{filtered.length} empresas nesta visualização</p></div><span className="muted">Base inteligente · {planCode}</span></div>{filtered.map(l=><div className="lead" key={l.id}><button className="icon-action" onClick={async()=>{const supabase=createClient() as any;const {data:userData}=await supabase.auth.getUser();if(!userData.user)return;const {error}=await supabase.from("pipeline_items").upsert({user_id:userData.user.id,lead_id:l.id,stage:"selected"},{onConflict:"user_id,lead_id"});if(error){notify("Não foi possível adicionar ao CRM.");return;}setPipeline(prev=>({...prev,[l.id]:"Selecionado"}));notify("Lead adicionado à prospecção.");}} aria-label={`Adicionar ${l.name} ao CRM`}><Target size={15}/></button><div className="company small">{l.name[0]}</div><div className="leadinfo"><b>{l.name}</b><span>{l.segment} · {l.location}</span></div><div className="site">{l.hasSite?<><i className="dot ok"/>Site encontrado</>:<><i className="dot warn"/>Site não identificado</>}</div><strong className="potential">{l.score}</strong><a className="icon-action" href={whatsappUrl(l.phone,commercialMessage(l.name))} target="_blank" rel="noopener noreferrer" aria-label={`Abrir WhatsApp para ${l.name}`}><MessageCircle size={15}/></a></div>)}</section></>;
 }
 function Pipeline({stage,setStage,pipeline,setPipeline,leads,notify}:{stage:string,setStage:(s:string)=>void,pipeline:Record<string,string>,setPipeline:React.Dispatch<React.SetStateAction<Record<string,string>>>,leads:LeadRow[],notify:(s:string)=>void}) {
  const data=leads.filter(lead => pipeline[lead.id]).map(lead=>({lead,currentStage:pipeline[lead.id] || "Selecionado"}));
@@ -208,7 +208,7 @@ function Pipeline({stage,setStage,pipeline,setPipeline,leads,notify}:{stage:stri
    if(!Number.isFinite(amount)||amount<=0){notify("Informe um valor de venda válido.");return;}
    setSaleSaving(true);
    try{
-     const supabase=createClient(); const {data:userData}=await supabase.auth.getUser();
+     const supabase=createClient() as any; const {data:userData}=await supabase.auth.getUser();
      if(!userData.user)return;
      const {error}=await supabase.from("sales").insert({user_id:userData.user.id,lead_id:saleLead.id,amount,status:"won",sold_at:new Date().toISOString()});
      if(error){notify("Não foi possível registrar a venda.");return;}
@@ -219,7 +219,7 @@ function Pipeline({stage,setStage,pipeline,setPipeline,leads,notify}:{stage:stri
    }finally{setSaleSaving(false);}
  };
  const changeStage=async (leadId:string,nextStage:string) => {
-   const supabase=createClient();
+   const supabase=createClient() as any;
    const {data:userData}=await supabase.auth.getUser();
    if (!userData.user) return;
    const {error}=await supabase.from("pipeline_items").upsert({user_id:userData.user.id,lead_id:leadId,stage:stageToDb[nextStage] || "selected"},{onConflict:"user_id,lead_id"});
@@ -229,7 +229,7 @@ function Pipeline({stage,setStage,pipeline,setPipeline,leads,notify}:{stage:stri
  };
  return <><Header eyebrow="CRM COMERCIAL" title="Minha Prospecção" text="Acompanhe cada oportunidade até o fechamento." action={<button className="primary" onClick={()=>notify("Selecione um lead nos resultados para adicioná-lo à prospecção.")}><Users size={16}/> Adicionar lead</button>}/>
  <div className="tabs">{stages.map(s=><button className={stage===s?"selected":""} onClick={()=>setStage(s)} key={s}>{s}</button>)}</div>
- <div className="kanban">{visible.map(({lead,currentStage})=><div className="deal" key={lead.id}><div className="deal-head"><span>{currentStage}</span><b>{lead.score}</b></div><strong>{lead.name}</strong><small>Próxima ação: acompanhar a oportunidade</small><select className="select" value={currentStage} onChange={e=>changeStage(lead.id,e.target.value)}>{stages.slice(1).map(s=><option key={s}>{s}</option>)}</select><div><a className="deal-whatsapp" href={whatsappUrl(lead.phone, commercialMessage(lead.name))} target="_blank" rel="noopener noreferrer"><MessageCircle size={13}/> WhatsApp</a><button onClick={()=>{setSaleLead(lead);setSaleAmount("");}} aria-label={`Registrar venda de ${lead.name}`}><CircleDollarSign size={13}/></button><button onClick={async()=>{const supabase=createClient(); const {data,error}=await supabase.rpc("consume_ai"); if(error||!data?.[0]){notify("Não foi possível validar o uso da IA.");return;} const result=data[0]; if(!result.allowed){notify(`Limite de IA do plano ${result.plan_code} atingido. Consulte Planos.`);return;} const content=commercialMessage(lead.name); const {error:activityError}=await supabase.from("activities").insert({user_id:(await supabase.auth.getUser()).data.user?.id,lead_id:lead.id,type:"ai_approach",content}); if(activityError){notify("Cota consumida, mas não foi possível salvar a abordagem.");return;} notify(`Abordagem IA salva. Uso: ${result.used}/${result.usage_limit===null?"∞":result.usage_limit}.`);}}><Sparkles size={13}/></button></div></div>)}</div>{saleLead&&<div className="modal-backdrop" role="presentation" onMouseDown={e=>{if(e.target===e.currentTarget&&!saleSaving)setSaleLead(null)}}><section className="modal-card" role="dialog" aria-modal="true" aria-labelledby="sale-title"><div className="modal-head"><div><span className="eyebrow">FECHAMENTO</span><h2 id="sale-title">Registrar venda</h2><p>{saleLead.name}</p></div><button className="modal-close" onClick={()=>setSaleLead(null)} disabled={saleSaving}>×</button></div><label className="field-label">Valor da venda<input autoFocus inputMode="decimal" value={saleAmount} onChange={e=>setSaleAmount(e.target.value)} placeholder="Ex.: 2490,00" onKeyDown={e=>{if(e.key==="Enter")registerSale()}} /></label><div className="modal-summary"><span>Estágio após salvar</span><strong>Venda</strong></div><div className="form-actions"><button className="secondary" onClick={()=>setSaleLead(null)} disabled={saleSaving}>Cancelar</button><button className="primary" onClick={registerSale} disabled={saleSaving}><CircleDollarSign size={14}/>{saleSaving?"Registrando...":"Registrar venda"}</button></div></section></div>}</>
+ <div className="kanban">{visible.map(({lead,currentStage})=><div className="deal" key={lead.id}><div className="deal-head"><span>{currentStage}</span><b>{lead.score}</b></div><strong>{lead.name}</strong><small>Próxima ação: acompanhar a oportunidade</small><select className="select" value={currentStage} onChange={e=>changeStage(lead.id,e.target.value)}>{stages.slice(1).map(s=><option key={s}>{s}</option>)}</select><div><a className="deal-whatsapp" href={whatsappUrl(lead.phone, commercialMessage(lead.name))} target="_blank" rel="noopener noreferrer"><MessageCircle size={13}/> WhatsApp</a><button onClick={()=>{setSaleLead(lead);setSaleAmount("");}} aria-label={`Registrar venda de ${lead.name}`}><CircleDollarSign size={13}/></button><button onClick={async()=>{const supabase=createClient() as any; const {data,error}=await supabase.rpc("consume_ai"); if(error||!data?.[0]){notify("Não foi possível validar o uso da IA.");return;} const result=data[0]; if(!result.allowed){notify(`Limite de IA do plano ${result.plan_code} atingido. Consulte Planos.`);return;} const content=commercialMessage(lead.name); const {error:activityError}=await supabase.from("activities").insert({user_id:(await supabase.auth.getUser()).data.user?.id,lead_id:lead.id,type:"ai_approach",content}); if(activityError){notify("Cota consumida, mas não foi possível salvar a abordagem.");return;} notify(`Abordagem IA salva. Uso: ${result.used}/${result.usage_limit===null?"∞":result.usage_limit}.`);}}><Sparkles size={13}/></button></div></div>)}</div>{saleLead&&<div className="modal-backdrop" role="presentation" onMouseDown={e=>{if(e.target===e.currentTarget&&!saleSaving)setSaleLead(null)}}><section className="modal-card" role="dialog" aria-modal="true" aria-labelledby="sale-title"><div className="modal-head"><div><span className="eyebrow">FECHAMENTO</span><h2 id="sale-title">Registrar venda</h2><p>{saleLead.name}</p></div><button className="modal-close" onClick={()=>setSaleLead(null)} disabled={saleSaving}>×</button></div><label className="field-label">Valor da venda<input autoFocus inputMode="decimal" value={saleAmount} onChange={e=>setSaleAmount(e.target.value)} placeholder="Ex.: 2490,00" onKeyDown={e=>{if(e.key==="Enter")registerSale()}} /></label><div className="modal-summary"><span>Estágio após salvar</span><strong>Venda</strong></div><div className="form-actions"><button className="secondary" onClick={()=>setSaleLead(null)} disabled={saleSaving}>Cancelar</button><button className="primary" onClick={registerSale} disabled={saleSaving}><CircleDollarSign size={14}/>{saleSaving?"Registrando...":"Registrar venda"}</button></div></section></div>}</>
 }
 
 function Agenda({leads,notify}:{leads:LeadRow[];notify:(s:string)=>void}) {
@@ -242,7 +242,7 @@ function Agenda({leads,notify}:{leads:LeadRow[];notify:(s:string)=>void}) {
   const [saving,setSaving]=useState(false);
 
   const load=async()=>{
-    const supabase=createClient();
+    const supabase=createClient() as any;
     const {data}=await supabase.from("activities").select("id,content,scheduled_at,completed_at,type,lead_id").order("scheduled_at",{ascending:true}).limit(50);
     setItems(data||[]);
   };
@@ -252,7 +252,7 @@ function Agenda({leads,notify}:{leads:LeadRow[];notify:(s:string)=>void}) {
     if(!content.trim()){notify("Descreva a atividade antes de salvar.");return;}
     setSaving(true);
     try{
-      const supabase=createClient();
+      const supabase=createClient() as any;
       const {data:userData}=await supabase.auth.getUser();
       if(!userData.user){return;}
       const {error}=await supabase.from("activities").insert({
@@ -265,7 +265,7 @@ function Agenda({leads,notify}:{leads:LeadRow[];notify:(s:string)=>void}) {
     }finally{setSaving(false);}
   };
   const complete=async(id:string)=>{
-    const supabase=createClient(); const completedAt=new Date().toISOString();
+    const supabase=createClient() as any; const completedAt=new Date().toISOString();
     const {error}=await supabase.from("activities").update({completed_at:completedAt}).eq("id",id);
     if(!error){setItems(prev=>prev.map(i=>i.id===id?{...i,completed_at:completedAt}:i));notify("Atividade concluída.");}
   };
@@ -299,7 +299,7 @@ function Revenue({leads,revenue,notify}:{leads:LeadRow[];revenue:number;notify:(
   const [saving,setSaving]=useState(false);
 
   const load=async()=>{
-    const supabase=createClient();
+    const supabase=createClient() as any;
     const {data}=await supabase.from("sales").select("id,amount,status,sold_at,lead_id").order("sold_at",{ascending:false}).limit(50);
     setSales(data||[]);
   };
@@ -309,7 +309,7 @@ function Revenue({leads,revenue,notify}:{leads:LeadRow[];revenue:number;notify:(
     const numeric=Number(amount.replace(",",".")); if(!Number.isFinite(numeric)||numeric<0){notify("Informe um valor de venda válido.");return;}
     setSaving(true);
     try{
-      const supabase=createClient(); const {data:userData}=await supabase.auth.getUser();
+      const supabase=createClient() as any; const {data:userData}=await supabase.auth.getUser();
       if(!userData.user){return;}
       const {error}=await supabase.from("sales").insert({user_id:userData.user.id,lead_id:leadId||null,amount:numeric,status,sold_at:soldAt?new Date(soldAt).toISOString():new Date().toISOString()});
       if(error){notify("Não foi possível registrar a venda.");return;}
@@ -341,7 +341,7 @@ function SettingsPage({userName,setUserName,userEmail,planCode,theme,setTheme,la
     if(!name.trim()){notify("Informe seu nome.");return;}
     setSaving(true);
     try{
-      const supabase=createClient(); const {data:userData}=await supabase.auth.getUser();
+      const supabase=createClient() as any; const {data:userData}=await supabase.auth.getUser();
       if(!userData.user){return;}
       const {error}=await supabase.from("profiles").update({full_name:name.trim()}).eq("id",userData.user.id);
       if(error){notify("Não foi possível salvar o perfil.");return;}
