@@ -424,3 +424,23 @@ drop policy if exists admin_audit_read on public.admin_audit_log;
 create policy admin_audit_read on public.admin_audit_log for select to authenticated using (public.is_admin());
 drop policy if exists admin_audit_insert on public.admin_audit_log;
 create policy admin_audit_insert on public.admin_audit_log for insert to authenticated with check (public.is_admin() and admin_user_id=(select auth.uid()));
+
+
+-- Visão administrativa segura de usuários e assinaturas
+create or replace view public.admin_user_overview as
+select
+  p.id,
+  u.email,
+  p.full_name,
+  p.role,
+  p.plan_code,
+  s.status as subscription_status,
+  s.provider,
+  s.current_period_end,
+  p.created_at
+from public.profiles p
+join auth.users u on u.id=p.id
+left join public.subscriptions s on s.user_id=p.id;
+
+revoke all on public.admin_user_overview from anon, public;
+grant select on public.admin_user_overview to authenticated;
