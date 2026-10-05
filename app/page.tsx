@@ -8,13 +8,23 @@ import {
 } from "lucide-react";
 
 const leads = [
-  ["Pizzaria La Bella","Restaurante","Salvador, BA",false,96],
-  ["Studio Araujo Advocacia","Advocacia","Salvador, BA",true,91],
-  ["Casa Norte Móveis","Móveis","Feira de Santana, BA",false,88],
-  ["Clínica Vitta","Saúde","Lauro de Freitas, BA",true,84],
-  ["Bahia Fit Academia","Academia","Salvador, BA",false,82],
-  ["Ateliê Casa Azul","Decoração","Camaçari, BA",false,79]
+  ["Pizzaria La Bella","Restaurante","Salvador, BA",false,96,"5571999991001"],
+  ["Studio Araujo Advocacia","Advocacia","Salvador, BA",true,91,"5571999991002"],
+  ["Casa Norte Móveis","Móveis","Feira de Santana, BA",false,88,"5575999991003"],
+  ["Clínica Vitta","Saúde","Lauro de Freitas, BA",true,84,"5571999991004"],
+  ["Bahia Fit Academia","Academia","Salvador, BA",false,82,"5571999991005"],
+  ["Ateliê Casa Azul","Decoração","Camaçari, BA",false,79,"5571999991006"]
 ] as const;
+
+function whatsappUrl(phone:string, message:string) {
+  const digits = phone.replace(/\D/g, "");
+  const normalized = digits.startsWith("55") ? digits : `55${digits}`;
+  return `https://wa.me/${normalized}?text=${encodeURIComponent(message)}`;
+}
+
+function commercialMessage(name:string) {
+  return `Olá! Tudo bem? Aqui é da Progresso Acha. Encontrei a ${name} e queria apresentar uma oportunidade para ajudar sua empresa a gerar mais clientes pela internet. Podemos conversar?`;
+}
 
 const stages = ["Tudo","Selecionado","Contatado","Respondeu","Reunião","Proposta","Venda"];
 
@@ -75,12 +85,12 @@ function Leads({query,setQuery,notify}:{query:string,setQuery:(v:string)=>void,n
  return <><Header eyebrow="PROSPECÇÃO INTELIGENTE" title="Buscar Leads" text="Encontre empresas, identifique oportunidades e comece a conversa." action={<div className="usage"><span>Buscas</span><b>42 / 300</b><div><i/></div></div>}/>
  <div className="searchbar"><div><Search size={18}/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Ex.: restaurantes em Salvador..."/><kbd>⌘ K</kbd></div><button className="secondary"><Settings size={16}/> Filtros avançados</button><button className="primary" onClick={()=>notify("Busca realizada com sucesso.")}>Buscar</button></div>
  <div className="metrics"><div><b>248</b><span>Empresas encontradas</span></div><div><b className="green">74</b><span>Sem site</span></div><div><b>174</b><span>Com site</span></div><div><b className="cyan">31</b><span>Oportunidades altas</span></div></div>
- <section className="panel"><div className="panelhead"><div><h2>Resultados da busca</h2><p>{filtered.length} empresas nesta visualização</p></div><span className="muted">Base inteligente</span></div>{filtered.map(l=><div className="lead" key={l[0]}><input type="checkbox"/><div className="company small">{l[0][0]}</div><div className="leadinfo"><b>{l[0]}</b><span>{l[1]} · {l[2]}</span></div><div className="site">{l[3]?<><i className="dot ok"/>Site encontrado</>:<><i className="dot warn"/>Site não identificado</>}</div><strong className="potential">{l[4]}</strong><button className="icon-action" onClick={()=>notify("WhatsApp preparado para "+l[0])}><MessageCircle size={15}/></button></div>)}</section></>
+ <section className="panel"><div className="panelhead"><div><h2>Resultados da busca</h2><p>{filtered.length} empresas nesta visualização</p></div><span className="muted">Base inteligente</span></div>{filtered.map(l=><div className="lead" key={l[0]}><input type="checkbox"/><div className="company small">{l[0][0]}</div><div className="leadinfo"><b>{l[0]}</b><span>{l[1]} · {l[2]}</span></div><div className="site">{l[3]?<><i className="dot ok"/>Site encontrado</>:<><i className="dot warn"/>Site não identificado</>}</div><strong className="potential">{l[4]}</strong><a className="icon-action" href={whatsappUrl(l[5], commercialMessage(l[0]))} target="_blank" rel="noopener noreferrer" aria-label={`Abrir WhatsApp para ${l[0]}`}><MessageCircle size={15}/></a></div>)}</section></>
 }
 
 function Pipeline({stage,setStage,notify}:{stage:string,setStage:(s:string)=>void,notify:(s:string)=>void}) {
  const data=[["Selecionado","Pizzaria La Bella",96],["Contatado","Casa Norte Móveis",88],["Respondeu","Clínica Vitta",84],["Reunião","Bahia Fit Academia",82],["Proposta","Studio Araujo Advocacia",91],["Venda","Ateliê Casa Azul",79]] as const;
- return <><Header eyebrow="CRM COMERCIAL" title="Minha Prospecção" text="Acompanhe cada oportunidade até o fechamento." action={<button className="primary" onClick={()=>notify("Lead adicionado à prospecção.")}><Users size={16}/> Adicionar lead</button>}/><div className="tabs">{stages.map(s=><button className={stage===s?"selected":""} onClick={()=>setStage(s)} key={s}>{s}</button>)}</div><div className="kanban">{data.filter(x=>stage==="Tudo"||x[0]===stage).map(x=><div className="deal" key={x[1]}><div className="deal-head"><span>{x[0]}</span><b>{x[2]}</b></div><strong>{x[1]}</strong><small>Próxima ação: entrar em contato</small><div><button onClick={()=>notify("WhatsApp preparado.")}><MessageCircle size={13}/> WhatsApp</button><button onClick={()=>notify("Abordagem IA gerada.")}><Sparkles size={13}/></button></div></div>)}</div></>
+ return <><Header eyebrow="CRM COMERCIAL" title="Minha Prospecção" text="Acompanhe cada oportunidade até o fechamento." action={<button className="primary" onClick={()=>notify("Lead adicionado à prospecção.")}><Users size={16}/> Adicionar lead</button>}/><div className="tabs">{stages.map(s=><button className={stage===s?"selected":""} onClick={()=>setStage(s)} key={s}>{s}</button>)}</div><div className="kanban">{data.filter(x=>stage==="Tudo"||x[0]===stage).map(x=><div className="deal" key={x[1]}><div className="deal-head"><span>{x[0]}</span><b>{x[2]}</b></div><strong>{x[1]}</strong><small>Próxima ação: entrar em contato</small><div><a className="deal-whatsapp" href={whatsappUrl(leads.find(l=>l[0]===x[1])?.[5] ?? "", commercialMessage(x[1]))} target="_blank" rel="noopener noreferrer"><MessageCircle size={13}/> WhatsApp</a><button onClick={()=>notify("Abordagem IA gerada.")}><Sparkles size={13}/></button></div></div>)}</div></>
 }
 
 function Plans({notify}:{notify:(s:string)=>void}) {
