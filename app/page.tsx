@@ -26,7 +26,7 @@ function commercialMessage(name:string) {
   return `Olá! Tudo bem? Aqui é da Progresso Acha. Encontrei a ${name} e queria apresentar uma oportunidade para ajudar sua empresa a gerar mais clientes pela internet. Podemos conversar?`;
 }
 
-const stages = ["Tudo","Selecionado","Contatado","Respondeu","Reunião","Proposta","Venda"];
+const stages = ["Tudo","Selecionado","Contatado","Respondeu","Reunião","Proposta","Venda","Descartado"];
 
 export default function Home() {
   const [active,setActive] = useState("Dashboard");
