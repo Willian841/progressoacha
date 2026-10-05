@@ -55,6 +55,99 @@ export type Database = {
           },
         ]
       }
+      admin_audit_log: {
+        Row: {
+          action: string
+          admin_user_id: string
+          created_at: string
+          details: Json
+          id: string
+          target_id: string | null
+          target_type: string
+        }
+        Insert: {
+          action: string
+          admin_user_id: string
+          created_at?: string
+          details?: Json
+          id?: string
+          target_id?: string | null
+          target_type: string
+        }
+        Update: {
+          action?: string
+          admin_user_id?: string
+          created_at?: string
+          details?: Json
+          id?: string
+          target_id?: string | null
+          target_type?: string
+        }
+        Relationships: []
+      }
+      billing_events: {
+        Row: {
+          created_at: string
+          event_id: string
+          event_type: string
+          id: string
+          payload: Json
+          processed: boolean
+          processed_at: string | null
+          provider: string
+        }
+        Insert: {
+          created_at?: string
+          event_id: string
+          event_type: string
+          id?: string
+          payload?: Json
+          processed?: boolean
+          processed_at?: string | null
+          provider: string
+        }
+        Update: {
+          created_at?: string
+          event_id?: string
+          event_type?: string
+          id?: string
+          payload?: Json
+          processed?: boolean
+          processed_at?: string | null
+          provider?: string
+        }
+        Relationships: []
+      }
+      gateway_settings: {
+        Row: {
+          enabled: boolean
+          id: boolean
+          mode: string
+          provider: string
+          public_key: string | null
+          updated_at: string
+          webhook_url: string | null
+        }
+        Insert: {
+          enabled?: boolean
+          id?: boolean
+          mode?: string
+          provider?: string
+          public_key?: string | null
+          updated_at?: string
+          webhook_url?: string | null
+        }
+        Update: {
+          enabled?: boolean
+          id?: boolean
+          mode?: string
+          provider?: string
+          public_key?: string | null
+          updated_at?: string
+          webhook_url?: string | null
+        }
+        Relationships: []
+      }
       leads: {
         Row: {
           area: string | null
@@ -147,29 +240,62 @@ export type Database = {
           },
         ]
       }
+      plan_settings: {
+        Row: {
+          ai_limit: number | null
+          companies_per_search: number
+          name: string
+          plan_code: string
+          price: number
+          renewable: boolean
+          search_limit: number | null
+          updated_at: string
+        }
+        Insert: {
+          ai_limit?: number | null
+          companies_per_search?: number
+          name: string
+          plan_code: string
+          price?: number
+          renewable?: boolean
+          search_limit?: number | null
+          updated_at?: string
+        }
+        Update: {
+          ai_limit?: number | null
+          companies_per_search?: number
+          name?: string
+          plan_code?: string
+          price?: number
+          renewable?: boolean
+          search_limit?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string
           full_name: string | null
           id: string
-          role: string
           plan_code: string
+          role: string
           updated_at: string
         }
         Insert: {
           created_at?: string
           full_name?: string | null
           id: string
-          role?: string
           plan_code?: string
+          role?: string
           updated_at?: string
         }
         Update: {
           created_at?: string
           full_name?: string | null
           id?: string
-          role?: string
           plan_code?: string
+          role?: string
           updated_at?: string
         }
         Relationships: []
@@ -253,6 +379,7 @@ export type Database = {
       }
       subscriptions: {
         Row: {
+          cancel_at_period_end: boolean
           created_at: string
           current_period_end: string | null
           current_period_start: string | null
@@ -262,12 +389,12 @@ export type Database = {
           provider: string | null
           provider_customer_id: string | null
           provider_subscription_id: string | null
-          cancel_at_period_end: boolean
           status: string
           updated_at: string
           user_id: string
         }
         Insert: {
+          cancel_at_period_end?: boolean
           created_at?: string
           current_period_end?: string | null
           current_period_start?: string | null
@@ -277,12 +404,12 @@ export type Database = {
           provider?: string | null
           provider_customer_id?: string | null
           provider_subscription_id?: string | null
-          cancel_at_period_end?: boolean
           status?: string
           updated_at?: string
           user_id: string
         }
         Update: {
+          cancel_at_period_end?: boolean
           created_at?: string
           current_period_end?: string | null
           current_period_start?: string | null
@@ -292,35 +419,10 @@ export type Database = {
           provider?: string | null
           provider_customer_id?: string | null
           provider_subscription_id?: string | null
-          cancel_at_period_end?: boolean
           status?: string
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
-      }
-      admin_audit_log: {
-        Row: { id: string; admin_user_id: string; action: string; target_type: string; target_id: string | null; details: Json; created_at: string }
-        Insert: { id?: string; admin_user_id: string; action: string; target_type: string; target_id?: string | null; details?: Json; created_at?: string }
-        Update: { id?: string; admin_user_id?: string; action?: string; target_type?: string; target_id?: string | null; details?: Json; created_at?: string }
-        Relationships: []
-      }
-      billing_events: {
-        Row: { id: string; provider: string; event_id: string; event_type: string; payload: Json; processed: boolean; created_at: string; processed_at: string | null }
-        Insert: { id?: string; provider: string; event_id: string; event_type: string; payload?: Json; processed?: boolean; created_at?: string; processed_at?: string | null }
-        Update: { id?: string; provider?: string; event_id?: string; event_type?: string; payload?: Json; processed?: boolean; created_at?: string; processed_at?: string | null }
-        Relationships: []
-      }
-      gateway_settings: {
-        Row: { id: boolean; provider: string; mode: string; public_key: string | null; webhook_url: string | null; enabled: boolean; updated_at: string }
-        Insert: { id?: boolean; provider?: string; mode?: string; public_key?: string | null; webhook_url?: string | null; enabled?: boolean; updated_at?: string }
-        Update: { id?: boolean; provider?: string; mode?: string; public_key?: string | null; webhook_url?: string | null; enabled?: boolean; updated_at?: string }
-        Relationships: []
-      }
-      plan_settings: {
-        Row: { plan_code: string; name: string; price: number; search_limit: number | null; companies_per_search: number; ai_limit: number | null; renewable: boolean; updated_at: string }
-        Insert: { plan_code: string; name: string; price?: number; search_limit?: number | null; companies_per_search?: number; ai_limit?: number | null; renewable?: boolean; updated_at?: string }
-        Update: { plan_code?: string; name?: string; price?: number; search_limit?: number | null; companies_per_search?: number; ai_limit?: number | null; renewable?: boolean; updated_at?: string }
         Relationships: []
       }
       usage_monthly: {
@@ -355,10 +457,26 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      admin_user_overview: {
+        Row: {
+          created_at: string | null
+          current_period_end: string | null
+          email: string | null
+          full_name: string | null
+          id: string | null
+          plan_code: string | null
+          provider: string | null
+          role: string | null
+          subscription_status: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
-      is_admin: { Args: never; Returns: boolean }
+      admin_update_user: {
+        Args: { p_plan_code: string; p_status?: string; p_user_id: string }
+        Returns: Json
+      }
       checkout_plan: { Args: { p_plan_code: string }; Returns: Json }
       consume_ai: {
         Args: never
@@ -388,20 +506,7 @@ export type Database = {
           used: number
         }[]
       }
-      admin_user_overview: {
-        Row: {
-          id: string
-          email: string | null
-          full_name: string | null
-          role: string
-          plan_code: string
-          subscription_status: string | null
-          provider: string | null
-          current_period_end: string | null
-          created_at: string
-        }
-        Relationships: []
-      }
+      is_admin: { Args: never; Returns: boolean }
       plan_limits: {
         Args: { p_plan: string }
         Returns: {
