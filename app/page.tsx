@@ -65,9 +65,8 @@ export default function Home() {
         const { data: limits } = await supabase.rpc("plan_limits", { p_plan: currentPlan });
         const limitRow = limits?.[0];
         const monthStart = new Date(); monthStart.setDate(1); monthStart.setHours(0,0,0,0);
-        const { count: totalSearches } = await supabase.from("searches").select("id", { count:"exact", head:true }).eq("user_id", data.user.id);
         const { data: usageRow } = await supabase.from("usage_monthly").select("search_count,ai_count").eq("user_id", data.user.id).eq("month_start", monthStart.toISOString().slice(0,10)).maybeSingle();
-        setSearchUsage({used: currentPlan === "free" ? (totalSearches || 0) : (usageRow?.search_count || 0), limit: limitRow?.search_limit ?? null});
+        setSearchUsage({used: usageRow?.search_count || 0, limit: limitRow?.search_limit ?? null});
         setAiUsage({used: usageRow?.ai_count || 0, limit: limitRow?.ai_limit ?? null});
         const { data:pipelineRows } = await supabase.from("pipeline_items").select("lead_id,stage");
         const saved:Record<string,string> = {};
