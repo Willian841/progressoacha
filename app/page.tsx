@@ -146,16 +146,19 @@ function Header({eyebrow,title,text,action}:{eyebrow:string,title:string,text:st
 
 function Dashboard({userName,leads,pipeline,revenue,onSearch,onPipeline,onAgenda,notify}:{userName:string,leads:LeadRow[],pipeline:Record<string,string>,revenue:number,onSearch:()=>void,onPipeline:()=>void,onAgenda:()=>void,notify:(s:string)=>void}) {
   const [pendingFollowUps,setPendingFollowUps]=useState<{id:string;content:string;scheduled_at:string|null;lead_id:string|null}[]>([]);
+  const [overdueFollowUps,setOverdueFollowUps]=useState(0);
   useEffect(()=>{
     const loadFollowUps=async()=>{
       const supabase=createClient() as any;
-      const {data}=await supabase.from("activities").select("id,content,scheduled_at,lead_id").eq("type","task").is("completed_at",null).not("scheduled_at","is",null).order("scheduled_at",{ascending:true,nullsFirst:false}).limit(8);
+      const [{data},{count}] = await Promise.all([
+        supabase.from("activities").select("id,content,scheduled_at,lead_id").eq("type","task").is("completed_at",null).not("scheduled_at","is",null).order("scheduled_at",{ascending:true,nullsFirst:false}).limit(8),
+        supabase.from("activities").select("id",{count:"exact",head:true}).eq("type","task").is("completed_at",null).not("scheduled_at","is",null).lt("scheduled_at",new Date().toISOString())
+      ]);
       setPendingFollowUps(data||[]);
+      setOverdueFollowUps(count||0);
     };
     loadFollowUps();
   },[]);
-  const now=Date.now();
-  const overdueFollowUps=pendingFollowUps.filter(item=>item.scheduled_at && new Date(item.scheduled_at).getTime()<now).length;
   const hotLeads=leads.filter(l=>pipeline[l.id] && ["Respondeu","Reunião","Proposta"].includes(pipeline[l.id])).sort((a,b)=>b.score-a.score).slice(0,3);
   const wonCount=Object.values(pipeline).filter(s=>s==="Venda").length;
   const proposalCount=Object.values(pipeline).filter(s=>s==="Proposta").length;
