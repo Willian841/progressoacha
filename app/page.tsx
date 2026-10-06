@@ -179,12 +179,11 @@ function Leads({leads,setLeads,query,setQuery,notify,searchUsage,setSearchUsage,
  });
  const runSearch=async()=>{
    try{
-     const city = cityFilter || (query.match(/(?:em|na|no)\\s+(.+)$/i)?.[1] || "").trim();
-     const response = await fetch("/api/leads/search",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({query,segment:segmentFilter,city,state:stateFilter})});
+     const response = await fetch("/api/leads/search",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({query,segment:segmentFilter,city:cityFilter,state:stateFilter})});
      const payload = await response.json();
      if(!response.ok){notify(payload.error || "Não foi possível realizar a busca.");return;}
      const rows:LeadRow[] = (payload.leads || []).map((r:any)=>({id:r.id || `osm-${r.source_id}`,name:r.name,segment:r.segment || segmentFilter || "Outros",location:[r.city,r.state].filter(Boolean).join(", "),country:r.country || "Brasil",state:r.state || "",city:r.city || "",area:r.area || "",hasSite:r.website_status === "found",score:Number(r.opportunity_score || 0),phone:r.phone || "",address:r.address || "",latitude:r.latitude ?? null,longitude:r.longitude ?? null}));
-     setLeads(prev=>{const map=new Map(prev.map(l=>[l.id,l])); rows.forEach(l=>map.set(l.id,l)); return Array.from(map.values()).sort((a,b)=>b.score-a.score);});
+     setLeads(rows.sort((a,b)=>b.score-a.score));
      const usage=payload.usage;
      if(usage) setSearchUsage({used:usage.used,limit:usage.usage_limit});
      notify(`Busca real concluída: ${rows.length} empresas encontradas.`);
