@@ -37,18 +37,38 @@ Deno.serve(async (req: Request) => {
       auth: { persistSession: false, autoRefreshToken: false },
     });
 
-    const [{ data: plan, error: planError }, { data: profile, error: profileError }, { data: subscription, error: subscriptionError }] = await Promise.all([
+    const [{ data: plan, error: planError }, { data: profile, error: profileError }] = await Promise.all([
       adminClient.from("plan_settings").select("plan_code,name,price").eq("plan_code", planCode).maybeSingle(),
       adminClient.from("profiles").select("id,full_name,plan_code,role").eq("id", user.id).maybeSingle(),
-      adminClient.from("subscriptions").select("plan_code,status,provider_subscription_id").eq("user_id", user.id).maybeSingle(),
     ]);
 
-    if (planError || profileError || subscriptionError || !plan || !profile) return json({ error: "workspace_not_found" }, 404);
+    if (planError || profileError || !plan || !profile) return json({ error: "workspace_not_found" }, 404);
     if (profile.role === "admin") return json({ error: "admin_has_unlimited_access" }, 400);
 
-    if (subscription?.status === "active" && subscription.plan_code !== "free") {
-      if (subscription.plan_code === planCode) return json({ status: "already_active", plan_code: planCode });
-      return json({ error: "active_subscription_exists", plan_code: subscription.plan_code }, 409);
+    const { data: claim, error: claimError } = await adminClient.rpc("claim_checkout", {
+      p_user_id: user.id,
+      p_plan_code: planCode,
+    });
+
+    if (claimError || !claim) {
+      console.error("Checkout claim error", claimError);
+      return json({ error: "checkout_claim_failed" }, 500);
+    }
+
+    if (claim.status === "already_active") {
+      return json({ status: "already_active", plan_code: planCode });
+    }
+
+    if (claim.status === "active_subscription_exists") {
+      return json({ error: "active_subscription_exists", plan_code: claim.plan_code }, 409);
+    }
+
+    if (claim.status === "checkout_in_progress") {
+      return json({ error: "checkout_in_progress" }, 409);
+    }
+
+    if (claim.status !== "claimed") {
+      return json({ error: "invalid_checkout_state" }, 409);
     }
 
     const origin = req.headers.get("origin") || Deno.env.get("APP_URL");
@@ -77,21 +97,26 @@ Deno.serve(async (req: Request) => {
       return json({ error: "mercado_pago_checkout_failed" }, 502);
     }
 
-    const { error: upsertError } = await adminClient.from("subscriptions").upsert({
-      user_id: user.id,
-      plan_code: planCode,
-      status: "pending",
-      provider: "mercado_pago",
-      provider_subscription_id: String(mpData.id),
-      updated_at: new Date().toISOString(),
-    }, { onConflict: "user_id" });
+    const { error: updateError } = await adminClient.from("subscriptions")
+      .update({
+        provider: "mercado_pago",
+        provider_subscription_id: String(mpData.id),
+        updated_at: new Date().toISOString(),
+      })
+      .eq("user_id", user.id)
+      .eq("status", "pending");
 
-    if (upsertError) {
-      console.error("Subscription local upsert error", upsertError);
+    if (updateError) {
+      console.error("Subscription local update error", updateError);
       return json({ error: "subscription_store_failed" }, 500);
     }
 
-    return json({ status: "checkout_created", plan_code: planCode, checkout_url: mpData.init_point, provider_subscription_id: String(mpData.id) });
+    return json({
+      status: "checkout_created",
+      plan_code: planCode,
+      checkout_url: mpData.init_point,
+      provider_subscription_id: String(mpData.id),
+    });
   } catch (error) {
     console.error("mercado-pago-checkout unexpected error", error);
     return json({ error: "internal_error" }, 500);
