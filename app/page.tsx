@@ -237,8 +237,24 @@ function Pipeline({stage,setStage,pipeline,setPipeline,leads,notify}:{stage:stri
    if (!userData.user) return;
    const {error}=await supabase.from("pipeline_items").upsert({user_id:userData.user.id,lead_id:leadId,stage:stageToDb[nextStage] || "selected"},{onConflict:"user_id,lead_id"});
    if (error) { notify("Não foi possível salvar o estágio."); return; }
+   const nextAction:Record<string,string> = {
+     Selecionado:"Preparar primeira abordagem comercial",
+     Contatado:"Aguardar resposta e fazer follow-up",
+     Respondeu:"Qualificar necessidade e próximo passo",
+     "Reunião":"Realizar reunião e registrar oportunidade",
+     Proposta:"Acompanhar proposta enviada",
+     Venda:"Registrar detalhes da venda e pós-venda",
+     Descartado:"Registrar motivo do descarte"
+   };
+   const {error:activityError}=await supabase.from("activities").insert({
+     user_id:userData.user.id,
+     lead_id:leadId,
+     type:"note",
+     content:`Estágio alterado para ${nextStage}. Próxima ação: ${nextAction[nextStage] || "Acompanhar oportunidade"}.`
+   });
+   if (activityError) { notify("Estágio salvo, mas não foi possível registrar o histórico."); }
    setPipeline(prev=>({...prev,[leadId]:nextStage}));
-   notify("Estágio salvo no CRM.");
+   notify(activityError ? "Estágio salvo no CRM." : "Estágio salvo + histórico registrado.");
  };
  return <><Header eyebrow="CRM COMERCIAL" title="Minha Prospecção" text="Acompanhe cada oportunidade até o fechamento." action={<button className="primary" onClick={()=>notify("Selecione um lead nos resultados para adicioná-lo à prospecção.")}><Users size={16}/> Adicionar lead</button>}/>
  <div className="tabs">{stages.map(s=><button className={stage===s?"selected":""} onClick={()=>setStage(s)} key={s}>{s}</button>)}</div>
