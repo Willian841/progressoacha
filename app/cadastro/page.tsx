@@ -17,7 +17,7 @@ export default function SignupPage() {
     e.preventDefault(); setLoading(true); setError(""); setMessage("");
     const cleanName=name.trim();
     const cleanEmail=email.trim().toLowerCase();
-    if(cleanName.length<2){setError("Informe seu nome para continuar.");setLoading(false);return;}\n    if(password.length<6){setError("A senha precisa ter pelo menos 6 caracteres.");setLoading(false);return;}
+    if(cleanName.length<2){setError("Informe seu nome para continuar.");setLoading(false);return;}\n    if(!/^\\S+@\\S+\\.\\S+$/.test(cleanEmail)){setError("Informe um e-mail válido.");setLoading(false);return;}\n    if(password.length<6){setError("A senha precisa ter pelo menos 6 caracteres.");setLoading(false);return;}
     try {
       const redirectTo = `${window.location.origin}/login`;
       const { error } = await createClient().auth.signUp({
