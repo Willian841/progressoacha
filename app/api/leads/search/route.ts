@@ -59,6 +59,13 @@ export async function POST(request:Request) {
     const {data:{user}} = await supabase.auth.getUser();
     if (!user) return NextResponse.json({error:"Não autenticado."},{status:401});
 
+    const {data:profile,error:profileError} = await supabase.from("profiles").select("plan_code").eq("id",user.id).maybeSingle();
+    if(profileError) return NextResponse.json({error:"Não foi possível validar o plano."},{status:500});
+    const {data:limits,error:limitsError} = await supabase.rpc("plan_limits",{p_plan:profile?.plan_code || "free"});
+    if(limitsError || !limits?.[0]) return NextResponse.json({error:"Não foi possível validar os limites do plano."},{status:500});
+    const companiesPerSearch = Number(limits[0].companies_per_search);
+    if(!Number.isFinite(companiesPerSearch) || companiesPerSearch < 1) return NextResponse.json({error:"Limite de empresas por busca inválido."},{status:500});
+
     const cityName = city;
     const inferredTerm = !segment ? (query.match(/^(.*?)\s+(?:em|na|no)\s+/i)?.[1]?.trim() || (cityName ? query : "")) : "";
     const genericTerms = new Set(["empresa","empresas","negócio","negocios","negócios","comércio","comercio","lojas"]);
@@ -87,7 +94,7 @@ export async function POST(request:Request) {
       const hasArea = Boolean(t["addr:suburb"]);
       const score = Math.min(100, 45 + (website ? 0 : 25) + (hasPhone ? 10 : 0) + (hasAddress ? 8 : 0) + (hasArea ? 4 : 0));
       return {user_id:user.id,name:t.name || "Empresa sem nome",segment:category,country:"Brasil",state:state || t["addr:state"] || "",city:city || t["addr:city"] || "",area:t["addr:suburb"] || "",address,phone,website,website_status:website ? "found" : "not_found",opportunity_score:score,source:"openstreetmap",source_id:String(e.id),latitude:lat,longitude:lon};
-    }).filter((r:any)=>r.name && r.name !== "Empresa sem nome").slice(0,100);
+    }).filter((r:any)=>r.name && r.name !== "Empresa sem nome").slice(0,companiesPerSearch);
 
     const {data:usageResult,error:usageError} = await supabase.rpc("consume_search",{p_segment:segment||undefined,p_country:"Brasil",p_state:state||undefined,p_city:city||cityName,p_area:undefined,p_filters:{query,source:"openstreetmap"},p_result_count:rows.length});
     if(usageError || !usageResult?.[0]?.allowed) return NextResponse.json({error:"Limite do plano atingido ou não foi possível registrar o uso."},{status:402});
