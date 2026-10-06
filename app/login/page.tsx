@@ -17,8 +17,16 @@ export default function LoginPage() {
     setError("");
     setLoading(true);
     try {
-      const { error } = await createClient().auth.signInWithPassword({ email, password });
-      if (error) throw error;
+      const cleanEmail = email.trim().toLowerCase();
+      if (!cleanEmail) throw new Error("Informe seu e-mail para continuar.");
+      if (password.length < 6) throw new Error("A senha precisa ter pelo menos 6 caracteres.");
+      const { error } = await createClient().auth.signInWithPassword({ email: cleanEmail, password });
+      if (error) {
+        const message = error.message?.toLowerCase() || "";
+        if (message.includes("invalid login credentials")) throw new Error("E-mail ou senha incorretos.");
+        if (message.includes("email not confirmed")) throw new Error("Confirme seu e-mail antes de entrar.");
+        throw error;
+      }
       window.location.href = "/";
     } catch (err:any) {
       setError(err?.message || "Não foi possível entrar.");
