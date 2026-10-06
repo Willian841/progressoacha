@@ -16,8 +16,13 @@ export default function SignupPage() {
   async function submit(e:FormEvent) {
     e.preventDefault(); setLoading(true); setError(""); setMessage("");
     try {
+      const redirectTo = `${window.location.origin}/login`;
       const { error } = await createClient().auth.signUp({
-        email, password, options:{ data:{ full_name:name } }
+        email, password,
+        options:{
+          data:{ full_name:name },
+          emailRedirectTo: redirectTo,
+        }
       });
       if (error) throw error;
       setMessage("Conta criada. Verifique seu e-mail para confirmar o acesso.");
@@ -28,7 +33,7 @@ export default function SignupPage() {
 
   return <main className="auth-shell"><section className="auth-card">
     <div className="auth-brand"><div className="logo"><Sparkles size={17}/></div><div><b>Progresso</b><span>ACHA</span></div></div>
-    <div className="auth-copy"><div className="eyebrow"><span className="pulse"/> COMEÇE AGORA</div><h1>Crie sua conta.</h1><p>Tenha seu espaço para buscar leads, organizar contatos e acompanhar vendas.</p></div>
+    <div className="auth-copy"><div className="eyebrow"><span className="pulse"/> COMECE AGORA</div><h1>Crie sua conta.</h1><p>Tenha seu espaço para buscar leads, organizar contatos e acompanhar vendas.</p></div>
     <form onSubmit={submit} className="auth-form">
       <label>Nome<input required value={name} onChange={e=>setName(e.target.value)} placeholder="Seu nome"/></label>
       <label>E-mail<input type="email" required value={email} onChange={e=>setEmail(e.target.value)} placeholder="voce@empresa.com"/></label>
