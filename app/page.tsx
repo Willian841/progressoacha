@@ -207,6 +207,7 @@ function LandingPage() {
                 </div>
               </div>
               <div className="product-next"><Sparkles size={14}/><div><b>Seu próximo passo</b><span>Você tem leads quentes esperando uma ação.</span></div><button>Ver prospecção <ArrowUpRight size={11}/></button></div>
+              <div className="product-bottom"><div><span className="product-bottom-icon"><Target size={10}/></span><div><b>Prospecção ativa</b><small>3 oportunidades em andamento</small></div></div><div><span className="product-bottom-icon"><CalendarDays size={10}/></span><div><b>Agenda em dia</b><small>2 follow-ups próximos</small></div></div><div><span className="product-bottom-icon"><CircleDollarSign size={10}/></span><div><b>Receita</b><small>R$ 4.850 gerados</small></div></div></div>
             </div>
           </div>
         </div>
