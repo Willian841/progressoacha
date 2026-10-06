@@ -90,10 +90,12 @@ export async function POST(request:Request) {
 
     const {data:usageResult,error:usageError} = await supabase.rpc("consume_search",{p_segment:segment||undefined,p_country:"Brasil",p_state:state||undefined,p_city:city||cityName,p_area:undefined,p_filters:{query,source:"openstreetmap"},p_result_count:rows.length});
     if(usageError || !usageResult?.[0]?.allowed) return NextResponse.json({error:"Limite do plano atingido ou não foi possível registrar o uso."},{status:402});
+    let savedRows=rows;
     if(rows.length) {
-      const {error:upsertError} = await supabase.from("leads").upsert(rows,{onConflict:"user_id,source,source_id"});
+      const {data:upsertedRows,error:upsertError} = await supabase.from("leads").upsert(rows,{onConflict:"user_id,source,source_id"}).select("*");
       if(upsertError) return NextResponse.json({error:"A busca foi registrada, mas não foi possível salvar os leads."},{status:500});
+      savedRows=upsertedRows || [];
     }
-    return NextResponse.json({leads:rows,usage:usageResult[0]});
+    return NextResponse.json({leads:savedRows,usage:usageResult[0]});
   } catch(error) { console.error(error); return NextResponse.json({error:"Erro ao realizar a busca."},{status:500}); }
 }
