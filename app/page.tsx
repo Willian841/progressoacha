@@ -162,7 +162,7 @@ function Dashboard({userName,leads,pipeline,revenue,onSearch,onPipeline,onAgenda
   const conversionRate=Object.keys(pipeline).length?Math.round(wonCount/Object.keys(pipeline).length*100):0;
   const hour=new Date().getHours();\n  const greeting=hour<12?"Bom dia":hour<18?"Boa tarde":"Boa noite";\n  return <><Header eyebrow="VISÃO GERAL" title={`${greeting}, ${userName} ✦`} text="Transforme oportunidades em conversas e conversas em vendas." action={<button className="primary" onClick={onSearch}><Search size={16}/> Buscar novos leads</button>}/>
     <div className="stats">
-    <Stat icon={Users} label="Leads encontrados" value={leads.length.toLocaleString("pt-BR")} note="No seu workspace"/>
+    <Stat icon={Users} label="Leads encontrados" value={leads.length.toLocaleString("pt-BR")} note="Carregados nesta sessão"/>
     <Stat icon={Target} label="Em prospecção" value={Object.keys(pipeline).length.toLocaleString("pt-BR")} note="Com estágio salvo"/>
     <Stat icon={TrendingUp} label="Conversão em venda" value={`${conversionRate}%`} note={`${wonCount} vendas de ${Object.keys(pipeline).length} oportunidades`}/>
     <Stat icon={CircleDollarSign} label="Receita gerada" value={revenue.toLocaleString("pt-BR",{style:"currency",currency:"BRL"})} note="Vendas marcadas como ganhas"/>
@@ -350,8 +350,9 @@ function Agenda({leads,notify}:{leads:LeadRow[];notify:(s:string)=>void}) {
   <section className="panel">{items.length?items.map(i=><div className="lead" key={i.id}><div className="leadinfo"><b>{i.content||"Atividade comercial"}</b><span>{i.scheduled_at?new Date(i.scheduled_at).toLocaleString("pt-BR"):"Sem horário definido"} · {i.type}</span></div>{i.completed_at?<span className="muted">Concluída</span>:<button className="secondary" onClick={()=>complete(i.id)}><Check size={14}/> Concluir</button>}</div>):<div className="coming"><div><CalendarDays size={23}/></div><h2>Nenhuma atividade agendada</h2><p>Crie seus próximos contatos para acompanhar a operação comercial.</p></div>}</section></>;
 }
 function Results({leads,pipeline}:{leads:LeadRow[];pipeline:Record<string,string>}) {
-  const counts=stages.slice(1).map(s=>({stage:s,count:leads.filter(l=>(pipeline[l.id]||"Selecionado")===s).length}));
-  return <><Header eyebrow="INTELIGÊNCIA COMERCIAL" title="Resultados" text="Veja como seus leads estão avançando pelo funil."/><div className="metrics">{counts.map(x=><div key={x.stage}><b>{x.count}</b><span>{x.stage}</span></div>)}</div><section className="panel"><div className="panelhead"><div><h2>Conversão do funil</h2><p>Distribuição atual dos leads por estágio.</p></div></div>{counts.map(x=><div className="lead" key={x.stage}><div className="leadinfo"><b>{x.stage}</b><span>{leads.length?Math.round(x.count/leads.length*100):0}% da base</span></div><strong className="potential">{x.count}</strong></div>)}</section></>;
+  const pipelineTotal=Object.keys(pipeline).length;
+  const counts=stages.slice(1).map(s=>({stage:s,count:Object.values(pipeline).filter(value=>value===s).length}));
+  return <><Header eyebrow="INTELIGÊNCIA COMERCIAL" title="Resultados" text="Veja como seus leads estão avançando pelo funil."/><div className="metrics">{counts.map(x=><div key={x.stage}><b>{x.count}</b><span>{x.stage}</span></div>)}</div><section className="panel"><div className="panelhead"><div><h2>Conversão do funil</h2><p>Distribuição atual dos leads com estágio salvo no CRM.</p></div></div>{counts.map(x=><div className="lead" key={x.stage}><div className="leadinfo"><b>{x.stage}</b><span>{pipelineTotal?Math.round(x.count/pipelineTotal*100):0}% da base</span></div><strong className="potential">{x.count}</strong></div>)}</section></>;
 }
 
 function Revenue({leads,revenue,notify}:{leads:LeadRow[];revenue:number;notify:(s:string)=>void}) {
