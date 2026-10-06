@@ -17,9 +17,11 @@ export default function ResetPasswordPage() {
     if(password !== confirm){ setError("As senhas não conferem."); return; }
     setLoading(true);
     try {
-      const { error } = await createClient().auth.updateUser({ password });
+      const supabase = createClient();
+      const { error } = await supabase.auth.updateUser({ password });
       if(error) throw error;
-      setMessage("Senha atualizada com sucesso. Você já pode entrar novamente.");
+      await supabase.auth.signOut();
+      setMessage("Senha atualizada com sucesso. Agora entre novamente com sua nova senha.");
     } catch(err:any) {
       setError(err?.message || "Não foi possível atualizar a senha.");
     } finally { setLoading(false); }
