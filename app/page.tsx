@@ -53,7 +53,7 @@ export default function Home() {
         const supabase = createClient() as any;
         const { data } = await supabase.auth.getUser();
         if (!mounted) return;
-        if (!data.user) { window.location.href = "/login"; return; }
+        if (!data.user) { setAuthReady(true); return; }
         setUserName(data.user.user_metadata?.full_name || data.user.email?.split("@")[0] || "Usuário");
         setUserEmail(data.user.email || "");
         const { data: profile } = await supabase.from("profiles").select("plan_code").eq("id", data.user.id).maybeSingle();
@@ -122,6 +122,7 @@ export default function Home() {
   ] as const;
 
   if (!authReady) return <main className="auth-shell"><section className="auth-card"><div className="auth-brand"><div className="logo"><Sparkles size={17}/></div><div><b>Progresso</b><span>ACHA</span></div></div><div className="auth-copy"><div className="eyebrow"><span className="pulse"/> CARREGANDO OPERAÇÃO</div><h1>Preparando seu workspace.</h1><p>Conectando seus dados com segurança.</p></div></section></main>;
+  if (!userEmail) return <LandingPage/>;
 
   return <div className="shell">
     <aside className={mobile ? "sidebar open" : "sidebar"}>
@@ -146,6 +147,52 @@ export default function Home() {
     </main>
     {toast && <div className="toast"><Check size={16}/>{toast}</div>}
   </div>
+}
+
+function LandingPage() {
+  const go = (path:string) => { window.location.href = path; };
+  return <main className="landing-page">
+    <div className="landing-glow landing-glow-one"/><div className="landing-glow landing-glow-two"/>
+    <header className="landing-header">
+      <button className="landing-brand" onClick={()=>window.scrollTo({top:0,behavior:"smooth"})}>
+        <span className="landing-logo"><Sparkles size={18}/></span><span><b>PROGRESSO</b> <em>ACHA</em></span>
+      </button>
+      <nav className="landing-nav"><a href="#inicio">Início</a><a href="#como-funciona">Como funciona</a><a href="#recursos">O que você encontra</a><a href="#planos">Planos</a><a href="#faq">FAQ</a></nav>
+      <div className="landing-actions"><button className="landing-lang">◉ Português⌄</button><button className="landing-login" onClick={()=>go("/login")}>Entrar</button><button className="landing-cta" onClick={()=>go("/cadastro")}>Começar grátis <ArrowUpRight size={15}/></button></div>
+    </header>
+
+    <section id="inicio" className="landing-hero">
+      <div className="landing-copy">
+        <span className="landing-badge"><Target size={14}/> PLATAFORMA DE PROSPECÇÃO</span>
+        <div className="landing-kicker">PROGRESSO <b>ACHA</b></div>
+        <h1>Encontre clientes.<br/>Saiba o que falar.<br/><span>Venda mais.</span></h1>
+        <p>Encontre empresas, organize sua prospecção e transforme oportunidades em conversas comerciais — tudo em um só lugar.</p>
+        <div className="landing-buttons"><button className="landing-primary" onClick={()=>go("/cadastro")}>Começar agora <ArrowUpRight size={17}/></button><a className="landing-secondary" href="#como-funciona">Ver como funciona <ChevronRight size={16}/></a></div>
+        <div className="landing-benefits"><div><Target size={19}/><span>Prospecção<br/><b>inteligente</b></span></div><div><BarChart3 size={19}/><span>Pipeline<br/><b>organizado</b></span></div><div><Zap size={19}/><span>Mais clientes,<br/><b>mais vendas</b></span></div></div>
+      </div>
+
+      <div className="landing-product-wrap">
+        <div className="landing-orbit landing-orbit-a"/><div className="landing-orbit landing-orbit-b"/>
+        <div className="product-window">
+          <div className="window-top"><span className="window-dot dot-red"/><span className="window-dot dot-yellow"/><span className="window-dot dot-green"/><span className="window-url">app.progressoacha.com</span></div>
+          <div className="product-body">
+            <aside className="product-sidebar"><div className="product-brand"><span><Sparkles size={13}/></span><b>PROGRESSO <em>ACHA</em></b></div><div className="product-nav"><i className="active">⌂ <b>Início</b></i><i>⌕ <b>Buscar Empresas</b></i><i>♙ <b>Meu CRM</b></i><i>◈ <b>Pipeline</b></i><i>◎ <b>Leads</b></i><i>⚙ <b>Configurações</b></i></div></aside>
+            <div className="product-main">
+              <div className="product-heading"><div><small>VISÃO GERAL</small><h3>Olá, bem-vindo de volta!</h3><p>Aqui está um resumo do seu progresso hoje.</p></div><span className="product-date">06 de outubro de 2026</span></div>
+              <div className="product-stats"><div><Search size={15}/><b>10</b><span>Leads encontrados</span></div><div><Target size={15}/><b>1</b><span>Em prospecção</span></div><div><Sparkles size={15}/><b>3</b><span>Abordagens IA</span></div><div><TrendingUp size={15}/><b>2</b><span>Vendas</span></div></div>
+              <div className="product-search"><span>⌖ São Paulo, SP</span><span>Dentistas</span><button><Search size={14}/> Buscar</button></div>
+              <div className="product-content-grid"><div className="product-leads"><div className="product-lead selected"><div className="lead-avatar">CS</div><div><b>Clínica Sorriso Vivo</b><small>★ 4,8 · Moema</small></div><strong>92</strong></div><div className="product-lead"><div className="lead-avatar">OP</div><div><b>OdontoCenter Paulista</b><small>★ 4,6 · Bela Vista</small></div><strong>87</strong></div><div className="product-lead"><div className="lead-avatar">DP</div><div><b>Dental Prime SP</b><small>★ 4,9 · Pinheiros</small></div><strong>81</strong></div><div className="product-lead"><div className="lead-avatar">SS</div><div><b>Sorriso & Saúde</b><small>★ 4,7 · Itaim Bibi</small></div><strong>76</strong></div></div>
+                <div className="product-detail"><span className="detail-icon"><Target size={19}/></span><b>Clínica Sorriso Vivo</b><small>(11) 3000-0000 · São Paulo, SP</small><button>✓ Em minha prospecção</button><label>Estágio: <b>Novo</b></label><button className="detail-ai"><Sparkles size={14}/> Gerar abordagem</button></div></div>
+            </div>
+          </div>
+        </div>
+        <div className="product-caption"><span><i/> Dados organizados</span><span><i/> CRM integrado</span><span><i/> IA para abordagem</span></div>
+      </div>
+    </section>
+
+    <section id="como-funciona" className="landing-strip"><div><span>01</span><b>Encontre</b><p>Pesquise empresas por cidade, segmento e oportunidade.</p></div><div><span>02</span><b>Organize</b><p>Salve os melhores leads e acompanhe cada etapa no CRM.</p></div><div><span>03</span><b>Converta</b><p>Tenha contexto para abordar melhor e acelerar suas vendas.</p></div></section>
+    <section id="recursos" className="landing-lower"><span className="landing-badge">FEITO PARA VENDER</span><h2>Da primeira busca ao próximo cliente.</h2><p>O PROGRESSO ACHA foi pensado para tirar a prospecção do improviso e colocar sua operação em movimento.</p><div className="landing-feature-grid"><article><Search size={21}/><b>Encontre oportunidades</b><span>Descubra empresas e filtre o que realmente faz sentido para seu negócio.</span></article><article><Target size={21}/><b>Tenha um CRM simples</b><span>Organize contatos, estágios e próximos passos sem perder o timing.</span></article><article><Sparkles size={21}/><b>Aborde com inteligência</b><span>Use o contexto do lead para criar conversas comerciais mais relevantes.</span></article></div></section>
+  </main>;
 }
 
 function Header({eyebrow,title,text,action}:{eyebrow:string,title:string,text:string,action?:React.ReactNode}) {
