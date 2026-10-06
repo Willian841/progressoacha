@@ -38,7 +38,7 @@ export default function LoginPage() {
         <button className="primary auth-submit" disabled={loading}>{loading?"Entrando...":"Entrar"} <ArrowRight size={15}/></button>
       </form>
       <div className="auth-links"><Link href="/recuperar-senha">Esqueci minha senha</Link><span>·</span><Link href="/cadastro">Criar conta</Link></div>
-      <Link className="back-home" href="/">← Voltar para o painel</Link>
+      <Link className="back-home" href="/">← Voltar para início</Link>
     </section>
   </main>;
 }
