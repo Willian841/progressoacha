@@ -201,8 +201,13 @@ function Leads({leads,setLeads,query,setQuery,notify,searchUsage,setSearchUsage,
      && l.score >= Number(scoreFilter);
  });
  const runSearch=async()=>{
+   const cleanQuery=query.trim();
+   if(!cleanQuery && !segmentFilter.trim() && !cityFilter.trim() && !stateFilter.trim()){
+     notify("Informe o que você quer buscar antes de continuar.");
+     return;
+   }
    try{
-     const response = await fetch("/api/leads/search",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({query,segment:segmentFilter,city:cityFilter,state:stateFilter})});
+     const response = await fetch("/api/leads/search",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({query:cleanQuery,segment:segmentFilter.trim(),city:cityFilter.trim(),state:stateFilter.trim()})});
      const payload = await response.json();
      if(!response.ok){notify(payload.error || "Não foi possível realizar a busca.");return;}
      const rows:LeadRow[] = (payload.leads || []).map((r:any)=>({id:r.id || `osm-${r.source_id}`,name:r.name,segment:r.segment || segmentFilter || "Outros",location:[r.city,r.state].filter(Boolean).join(", "),country:r.country || "Brasil",state:r.state || "",city:r.city || "",area:r.area || "",hasSite:r.website_status === "found",score:Number(r.opportunity_score || 0),phone:r.phone || "",address:r.address || "",latitude:r.latitude ?? null,longitude:r.longitude ?? null}));
