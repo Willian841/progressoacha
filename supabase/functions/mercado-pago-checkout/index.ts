@@ -71,8 +71,10 @@ Deno.serve(async (req: Request) => {
       return json({ error: "invalid_checkout_state" }, 409);
     }
 
-    const origin = req.headers.get("origin") || Deno.env.get("APP_URL");
-    if (!origin) return json({ error: "app_url_not_configured" }, 500);
+    // Always use the configured canonical app URL for Mercado Pago redirects.
+    // Never trust a caller-controlled Origin header, otherwise checkout could become an open redirect.
+    const appUrl = Deno.env.get("APP_URL")?.replace(/\\/+$/, "");
+    if (!appUrl) return json({ error: "app_url_not_configured" }, 500);
 
     const amount = Number(plan.price);
     if (!Number.isFinite(amount) || amount <= 0) return json({ error: "invalid_plan_price" }, 400);
@@ -87,7 +89,7 @@ Deno.serve(async (req: Request) => {
         payer_email: user.email,
         notification_url: notificationUrl,
         auto_recurring: { frequency: 1, frequency_type: "months", transaction_amount: amount, currency_id: "BRL" },
-        back_url: origin + "/?billing=return&plan=" + encodeURIComponent(planCode),
+        back_url: appUrl + "/?billing=return&plan=" + encodeURIComponent(planCode),
       }),
     });
 
