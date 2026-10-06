@@ -73,7 +73,7 @@ Deno.serve(async (req: Request) => {
 
     // Always use the configured canonical app URL for Mercado Pago redirects.
     // Never trust a caller-controlled Origin header, otherwise checkout could become an open redirect.
-    const appUrl = Deno.env.get("APP_URL")?.replace(/\\/+$/, "");
+    const appUrl = Deno.env.get("APP_URL")?.replace(/\/+$/, "");
     if (!appUrl) return json({ error: "app_url_not_configured" }, 500);
 
     const amount = Number(plan.price);
