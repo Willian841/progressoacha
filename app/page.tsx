@@ -520,7 +520,7 @@ function SettingsPage({userName,setUserName,userEmail,planCode,theme,setTheme,la
     }finally{setSaving(false);}
   };
   const changePassword=async()=>{
-    if(password.length<6){notify("A senha precisa ter pelo menos 6 caracteres.");return;}
+    if(password.length<6){notify("A senha precisa ter pelo menos 6 caracteres.");return;}\n    if(password.length>128){notify("A senha deve ter no máximo 128 caracteres.");return;}
     setSaving(true);
     try{const {error}=await createClient().auth.updateUser({password});if(error){notify("Não foi possível atualizar a senha.");return;}setPassword("");notify("Senha atualizada com segurança.");}finally{setSaving(false);}
   };
