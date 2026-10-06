@@ -149,7 +149,7 @@ function Dashboard({userName,leads,pipeline,revenue,onSearch,onPipeline,notify}:
   useEffect(()=>{
     const loadFollowUps=async()=>{
       const supabase=createClient() as any;
-      const {data}=await supabase.from("activities").select("id,content,scheduled_at,lead_id").eq("type","task").is("completed_at",null).not("scheduled_at","is",null).order("scheduled_at",{ascending:true}).limit(8);
+      const {data}=await supabase.from("activities").select("id,content,scheduled_at,lead_id").eq("type","task").is("completed_at",null).not("scheduled_at","is",null).order("scheduled_at",{ascending:true,nullsFirst:false}).limit(8);
       setPendingFollowUps(data||[]);
     };
     loadFollowUps();
@@ -307,7 +307,7 @@ function Agenda({leads,notify}:{leads:LeadRow[];notify:(s:string)=>void}) {
 
   const load=async()=>{
     const supabase=createClient() as any;
-    const {data}=await supabase.from("activities").select("id,content,scheduled_at,completed_at,type,lead_id").order("scheduled_at",{ascending:true}).limit(50);
+    const {data}=await supabase.from("activities").select("id,content,scheduled_at,completed_at,type,lead_id").order("scheduled_at",{ascending:true,nullsFirst:false}).limit(50);
     setItems(data||[]);
   };
   useEffect(()=>{ load(); },[]);
@@ -331,7 +331,9 @@ function Agenda({leads,notify}:{leads:LeadRow[];notify:(s:string)=>void}) {
   const complete=async(id:string)=>{
     const supabase=createClient() as any; const completedAt=new Date().toISOString();
     const {error}=await supabase.from("activities").update({completed_at:completedAt}).eq("id",id);
-    if(!error){setItems(prev=>prev.map(i=>i.id===id?{...i,completed_at:completedAt}:i));notify("Atividade concluída.");}
+    if(error){notify("Não foi possível concluir a atividade.");return;}
+    setItems(prev=>prev.map(i=>i.id===id?{...i,completed_at:completedAt}:i));
+    notify("Atividade concluída.");
   };
 
   return <><Header eyebrow="ORGANIZAÇÃO COMERCIAL" title="Agenda" text="Acompanhe os próximos contatos e compromissos." action={<button className="primary" onClick={()=>setOpen(v=>!v)}><CalendarDays size={16}/> Nova atividade</button>}/>
