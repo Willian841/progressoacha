@@ -69,13 +69,21 @@ export default function Home() {
         const { data: usageRow } = await supabase.from("usage_monthly").select("search_count,ai_count").eq("user_id", data.user.id).eq("month_start", monthStart.toISOString().slice(0,10)).maybeSingle();
         setSearchUsage({used: currentPlan === "free" ? (totalSearches || 0) : (usageRow?.search_count || 0), limit: limitRow?.search_limit ?? null});
         setAiUsage({used: usageRow?.ai_count || 0, limit: limitRow?.ai_limit ?? null});
-        let result = await supabase.from("leads").select("id,name,segment,country,state,city,area,address,website_status,opportunity_score,phone,latitude,longitude").order("opportunity_score",{ascending:false}).limit(50);
-        setDbLeads((result.data || []).map((r:any) => ({id:r.id,name:r.name,segment:r.segment || "Outros",location:[r.city,r.state].filter(Boolean).join(", "),country:r.country || "Brasil",state:r.state || "",city:r.city || "",area:r.area || "",hasSite:r.website_status === "found",score:r.opportunity_score,phone:r.phone || "",address:r.address || "",latitude:r.latitude ?? null,longitude:r.longitude ?? null})));
-        // CRM e receita precisam carregar mesmo quando ainda não existem leads.
         const { data:pipelineRows } = await supabase.from("pipeline_items").select("lead_id,stage");
         const saved:Record<string,string> = {};
         pipelineRows?.forEach((row:any) => { saved[row.lead_id] = dbToStage[row.stage] || "Selecionado"; });
         setPipeline(saved);
+
+        const baseLeadQuery = "id,name,segment,country,state,city,area,address,website_status,opportunity_score,phone,latitude,longitude";
+        const { data:topLeadRows } = await supabase.from("leads").select(baseLeadQuery).order("opportunity_score",{ascending:false}).limit(50);
+        let leadRows:any[] = topLeadRows || [];
+        const pipelineLeadIds = Object.keys(saved);
+        const missingPipelineIds = pipelineLeadIds.filter(id => !leadRows.some(row => row.id === id));
+        if (missingPipelineIds.length) {
+          const { data:pipelineLeadRows } = await supabase.from("leads").select(baseLeadQuery).in("id",missingPipelineIds);
+          leadRows = [...leadRows,...(pipelineLeadRows || [])];
+        }
+        setDbLeads(leadRows.map((r:any) => ({id:r.id,name:r.name,segment:r.segment || "Outros",location:[r.city,r.state].filter(Boolean).join(", "),country:r.country || "Brasil",state:r.state || "",city:r.city || "",area:r.area || "",hasSite:r.website_status === "found",score:r.opportunity_score,phone:r.phone || "",address:r.address || "",latitude:r.latitude ?? null,longitude:r.longitude ?? null})));
         const { data:salesRows } = await supabase.from("sales").select("amount").eq("status","won");
         setRevenue((salesRows || []).reduce((total:number,row:any) => total + Number(row.amount || 0), 0));
       } catch (error) { console.error(error); }
