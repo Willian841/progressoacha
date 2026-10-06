@@ -14,7 +14,7 @@ export default function RecoveryPage() {
   async function submit(e:FormEvent) {
     e.preventDefault(); setLoading(true); setError(""); setMessage("");
     const cleanEmail=email.trim().toLowerCase();
-    if(!cleanEmail){setError("Informe seu e-mail para continuar.");setLoading(false);return;}
+    if(!cleanEmail){setError("Informe seu e-mail para continuar.");setLoading(false);return;}\n    if(!/^\\S+@\\S+\\.\\S+$/.test(cleanEmail)){setError("Informe um e-mail válido.");setLoading(false);return;}
     try {
       const { error } = await createClient().auth.resetPasswordForEmail(cleanEmail, {
         redirectTo: `${window.location.origin}/redefinir-senha`
