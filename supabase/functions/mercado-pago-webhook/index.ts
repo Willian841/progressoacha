@@ -53,18 +53,24 @@ Deno.serve(async (req: Request) => {
     if (eventError?.code === "23505") return json({ ok: true, duplicate: true });
     if (eventError || !inserted) return json({ error: "event_store_failed" }, 500);
 
+    let synced = true;
     if (eventType === "subscription_preapproval") {
-      await syncPreapproval(dataId, accessToken, admin);
+      synced = await syncPreapproval(dataId, accessToken, admin);
     } else if (eventType === "subscription_authorized_payment") {
       const invoice = await fetchMercadoPago("https://api.mercadopago.com/authorized_payments/" + encodeURIComponent(dataId), accessToken);
+      if (!invoice) synced = false;
       const preapprovalId = String(invoice?.preapproval_id || "");
-      if (preapprovalId) await syncPreapproval(preapprovalId, accessToken, admin);
+      if (invoice && !preapprovalId) synced = false;
+      if (preapprovalId) synced = await syncPreapproval(preapprovalId, accessToken, admin);
     }
 
-    await admin.from("billing_events").update({
+    if (!synced) return json({ error: "processing_failed" }, 500);
+
+    const { error: markProcessedError } = await admin.from("billing_events").update({
       processed: true,
       processed_at: new Date().toISOString(),
     }).eq("id", inserted.id);
+    if (markProcessedError) return json({ error: "event_update_failed" }, 500);
 
     return json({ ok: true });
   } catch (error) {
@@ -75,7 +81,7 @@ Deno.serve(async (req: Request) => {
 
 async function syncPreapproval(preapprovalId: string, accessToken: string, admin: ReturnType<typeof createClient>) {
   const subscription = await fetchMercadoPago("https://api.mercadopago.com/preapproval/" + encodeURIComponent(preapprovalId), accessToken);
-  if (!subscription?.id) return;
+  if (!subscription?.id) return false;
 
   const providerId = String(subscription.id);
   const status = String(subscription.status || "pending");
@@ -86,15 +92,16 @@ async function syncPreapproval(preapprovalId: string, accessToken: string, admin
     .eq("provider_subscription_id", providerId)
     .maybeSingle();
 
-  if (!localSub) return;
+  if (!localSub) return false;
 
-  await admin.from("subscriptions").update({
+  const { error: subscriptionError } = await admin.from("subscriptions").update({
     status: mapStatus(status),
     provider: "mercado_pago",
     current_period_end: nextPayment,
     cancel_at_period_end: status === "cancelled",
     updated_at: new Date().toISOString(),
   }).eq("user_id", localSub.user_id);
+  if (subscriptionError) return false;
 
   if (status === "authorized") {
     await admin.from("profiles").update({
@@ -107,6 +114,7 @@ async function syncPreapproval(preapprovalId: string, accessToken: string, admin
       updated_at: new Date().toISOString(),
     }).eq("id", localSub.user_id);
   }
+  return true;
 }
 
 async function fetchMercadoPago(url: string, accessToken: string) {
