@@ -432,7 +432,7 @@ function AdminPage({notify}:{notify:(s:string)=>void}) {
     const [p,g,u]=await Promise.all([
       supabase.from("plan_settings").select("plan_code,name,price,search_limit,companies_per_search,ai_limit").order("price",{ascending:true}),
       supabase.from("gateway_settings").select("provider,mode,public_key,webhook_url,enabled").eq("id",true).maybeSingle(),
-      supabase.from("admin_user_overview").select("id,email,full_name,role,plan_code,subscription_status,provider,current_period_end,created_at").order("created_at",{ascending:false}).limit(50)
+      supabase.rpc("admin_user_overview")
     ]);
     setPlans((p.data||[]) as typeof plans);
     if(g.data) setGateway(g.data as typeof gateway);
