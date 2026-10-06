@@ -8,15 +8,6 @@ import {
   Target, TrendingUp, Users, X, Zap, LogOut, Save, LockKeyhole
 } from "lucide-react";
 
-const leads = [
-  ["Pizzaria La Bella","Restaurante","Salvador, BA",false,96,"5571999991001"],
-  ["Studio Araujo Advocacia","Advocacia","Salvador, BA",true,91,"5571999991002"],
-  ["Casa Norte Móveis","Móveis","Feira de Santana, BA",false,88,"5575999991003"],
-  ["Clínica Vitta","Saúde","Lauro de Freitas, BA",true,84,"5571999991004"],
-  ["Bahia Fit Academia","Academia","Salvador, BA",false,82,"5571999991005"],
-  ["Ateliê Casa Azul","Decoração","Camaçari, BA",false,79,"5571999991006"]
-] as const;
-
 function whatsappUrl(phone:string, message:string) {
   const digits = phone.replace(/\D/g, "");
   const normalized = digits.startsWith("55") ? digits : `55${digits}`;
@@ -79,11 +70,6 @@ export default function Home() {
         setSearchUsage({used: currentPlan === "free" ? (totalSearches || 0) : (usageRow?.search_count || 0), limit: limitRow?.search_limit ?? null});
         setAiUsage({used: usageRow?.ai_count || 0, limit: limitRow?.ai_limit ?? null});
         let result = await supabase.from("leads").select("id,name,segment,country,state,city,area,address,website_status,opportunity_score,phone,latitude,longitude").order("opportunity_score",{ascending:false}).limit(50);
-        if (!result.data?.length) {
-          const seed = leads.map(l => ({user_id:data.user.id,name:l[0],segment:l[1],city:l[2].split(", ")[0] || null,state:l[2].split(", ")[1] || null,country:"Brasil",phone:l[5],website_status:l[3] ? "found" : "not_found",opportunity_score:l[4],source:"demo"}));
-          await supabase.from("leads").insert(seed);
-          result = await supabase.from("leads").select("id,name,segment,city,state,website_status,opportunity_score,phone").order("opportunity_score",{ascending:false}).limit(50);
-        }
         if (result.data?.length) {
           setDbLeads(result.data.map((r:any) => ({id:r.id,name:r.name,segment:r.segment || "Outros",location:[r.city,r.state].filter(Boolean).join(", "),country:r.country || "Brasil",state:r.state || "",city:r.city || "",area:r.area || "",hasSite:r.website_status === "found",score:r.opportunity_score,phone:r.phone || "",address:r.address || "",latitude:r.latitude ?? null,longitude:r.longitude ?? null})));
           const { data:pipelineRows } = await supabase.from("pipeline_items").select("lead_id,stage");
@@ -147,8 +133,7 @@ export default function Home() {
         {active==="Planos" && <Plans notify={notify} currentPlan={planCode}/>}
         {active==="Agenda" && <Agenda leads={dbLeads} notify={notify}/>}
         {active==="Resultados" && <Results leads={dbLeads} pipeline={pipeline}/>}
-        {active==="Receita" && <Revenue leads={dbLeads} revenue={revenue} notify={notify}/>}
-        {active==="Configurações" && <SettingsPage userName={userName} setUserName={setUserName} userEmail={userEmail} planCode={planCode} theme={theme} setTheme={setTheme} language={language} setLanguage={setLanguage} notify={notify}/>}
+        {active==="Receita" && <Revenue leads={dbLeads} revenue={revenue} notify={notify}/>}        {active==="Configurações" && <SettingsPage userName={userName} setUserName={setUserName} userEmail={userEmail} planCode={planCode} theme={theme} setTheme={setTheme} language={language} setLanguage={setLanguage} notify={notify}/>}
         {active==="Admin" && isAdmin && <AdminPage notify={notify}/>}  
       </div>
     </main>
@@ -298,7 +283,6 @@ function Agenda({leads,notify}:{leads:LeadRow[];notify:(s:string)=>void}) {
   </section>}
   <section className="panel">{items.length?items.map(i=><div className="lead" key={i.id}><div className="leadinfo"><b>{i.content||"Atividade comercial"}</b><span>{i.scheduled_at?new Date(i.scheduled_at).toLocaleString("pt-BR"):"Sem horário definido"} · {i.type}</span></div>{i.completed_at?<span className="muted">Concluída</span>:<button className="secondary" onClick={()=>complete(i.id)}><Check size={14}/> Concluir</button>}</div>):<div className="coming"><div><CalendarDays size={23}/></div><h2>Nenhuma atividade agendada</h2><p>Crie seus próximos contatos para acompanhar a operação comercial.</p></div>}</section></>;
 }
-
 function Results({leads,pipeline}:{leads:LeadRow[];pipeline:Record<string,string>}) {
   const counts=stages.slice(1).map(s=>({stage:s,count:leads.filter(l=>(pipeline[l.id]||"Selecionado")===s).length}));
   return <><Header eyebrow="INTELIGÊNCIA COMERCIAL" title="Resultados" text="Veja como seus leads estão avançando pelo funil."/><div className="metrics">{counts.map(x=><div key={x.stage}><b>{x.count}</b><span>{x.stage}</span></div>)}</div><section className="panel"><div className="panelhead"><div><h2>Conversão do funil</h2><p>Distribuição atual dos leads por estágio.</p></div></div>{counts.map(x=><div className="lead" key={x.stage}><div className="leadinfo"><b>{x.stage}</b><span>{leads.length?Math.round(x.count/leads.length*100):0}% da base</span></div><strong className="potential">{x.count}</strong></div>)}</section></>;
