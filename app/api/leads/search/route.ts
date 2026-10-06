@@ -20,7 +20,7 @@ function inferSegment(query:string) {
 }
 
 function inferCity(query:string) {
-  const match = query.match(/(?:\\bem\\s+|\\bna\\s+|\\bno\\s+|\\bem\\s+)([^,]+?)(?:\\s*,\\s*[A-Za-z]{2})?$/i);
+  const match = query.match(/(?:\bem\s+|\bna\s+|\bno\s+)([^,]+?)(?:\s*,\s*[A-Za-z]{2})?$/i);
   return match?.[1]?.trim() || "";
 }
 
@@ -68,10 +68,10 @@ export async function POST(request:Request) {
     const areaRegex = escapeRegex(cityName);
     const filter = tagFilter(segment);
     const stateIso = STATE_ISO[state];
-    const stateScope = stateIso ? 'area["ISO3166-2"="' + stateIso + '"]->.stateArea;' : "";
+    const stateScope = stateIso ? 'area["ISO3166-2"="' + stateIso + '"]->.stateArea;' : 'area["ISO3166-1"="BR"]->.countryArea;';
     const cityScope = stateIso
       ? 'area["name"~"^' + areaRegex + '$",i]["boundary"="administrative"]["admin_level"~"6|7|8"](area.stateArea)->.searchArea;'
-      : 'area["name"~"^' + areaRegex + '$",i]["boundary"="administrative"]["admin_level"~"6|7|8"]->.searchArea;';
+      : 'area["name"~"^' + areaRegex + '$",i]["boundary"="administrative"]["admin_level"~"6|7|8"](area.countryArea)->.searchArea;';
     const q = "[out:json][timeout:25];" + stateScope + cityScope + "nwr(area.searchArea)" + filter + ";out center tags;";
 
     const response = await fetch(OVERPASS_URL,{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded","User-Agent":"ProgressoAcha/0.1 (lead prospecting app)"},body:new URLSearchParams({data:q}),cache:"no-store"});
