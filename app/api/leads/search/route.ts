@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createServerSupabaseClient } from "../../../lib/supabase-server";
+import { createServerSupabaseClient } from "@/lib/supabase-server";
 
 const OVERPASS_URL = "https://overpass-api.de/api/interpreter";
 
