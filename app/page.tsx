@@ -158,7 +158,7 @@ function LandingPage() {
         <span className="landing-logo"><Sparkles size={18}/></span><span><b>PROGRESSO</b> <em>ACHA</em></span>
       </button>
       <nav className="landing-nav"><a href="#inicio">Início</a><a href="#como-funciona">Como funciona</a><a href="#recursos">O que você encontra</a><a href="#planos">Planos</a><a href="#faq">FAQ</a></nav>
-      <div className="landing-actions"><button className="landing-lang">◉ Português⌄</button><button className="landing-login" onClick={()=>go("/login")}>Entrar</button><button className="landing-cta" onClick={()=>go("/cadastro")}>Começar grátis <ArrowUpRight size={15}/></button></div>
+      <div className="landing-actions"><button className="landing-login" onClick={()=>go("/login")}>Entrar</button><button className="landing-cta" onClick={()=>go("/cadastro")}>Começar grátis <ArrowUpRight size={15}/></button></div>
     </header>
 
     <section id="inicio" className="landing-hero">
@@ -173,20 +173,44 @@ function LandingPage() {
 
       <div className="landing-product-wrap">
         <div className="landing-orbit landing-orbit-a"/><div className="landing-orbit landing-orbit-b"/>
-        <div className="product-window">
-          <div className="window-top"><span className="window-dot dot-red"/><span className="window-dot dot-yellow"/><span className="window-dot dot-green"/><span className="window-url">app.progressoacha.com</span></div>
+        <div className="landing-product-label"><span className="pulse"/> INTERFACE REAL DO PROGRESSO ACHA</div>
+        <div className="product-window product-window-real">
+          <div className="window-top"><span className="window-dot dot-red"/><span className="window-dot dot-yellow"/><span className="window-dot dot-green"/><span className="window-url">PROGRESSO ACHA · Dashboard</span></div>
           <div className="product-body">
-            <aside className="product-sidebar"><div className="product-brand"><span><Sparkles size={13}/></span><b>PROGRESSO <em>ACHA</em></b></div><div className="product-nav"><i className="active">⌂ <b>Início</b></i><i>⌕ <b>Buscar Empresas</b></i><i>♙ <b>Meu CRM</b></i><i>◈ <b>Pipeline</b></i><i>◎ <b>Leads</b></i><i>⚙ <b>Configurações</b></i></div></aside>
+            <aside className="product-sidebar">
+              <div className="product-brand"><span><Sparkles size={13}/></span><b>Progresso <em>ACHA</em></b></div>
+              <div className="product-workspace"><small>WORKSPACE</small><b>Meu negócio <ChevronRight size={10}/></b></div>
+              <div className="product-nav">
+                <label>VISÃO GERAL</label><i className="active"><LayoutDashboard size={11}/> <b>Dashboard</b></i><i><CalendarDays size={11}/> <b>Agenda</b></i>
+                <label>PROSPECÇÃO</label><i><Search size={11}/> <b>Buscar Leads</b><em>10</em></i><i><Target size={11}/> <b>Minha Prospecção</b></i><i><BarChart3 size={11}/> <b>Resultados</b></i>
+                <label>FINANCEIRO</label><i><CircleDollarSign size={11}/> <b>Receita</b></i><i><Zap size={11}/> <b>Planos</b></i>
+              </div>
+            </aside>
             <div className="product-main">
-              <div className="product-heading"><div><small>VISÃO GERAL</small><h3>Olá, bem-vindo de volta!</h3><p>Aqui está um resumo do seu progresso hoje.</p></div><span className="product-date">06 de outubro de 2026</span></div>
-              <div className="product-stats"><div><Search size={15}/><b>10</b><span>Leads encontrados</span></div><div><Target size={15}/><b>1</b><span>Em prospecção</span></div><div><Sparkles size={15}/><b>3</b><span>Abordagens IA</span></div><div><TrendingUp size={15}/><b>2</b><span>Vendas</span></div></div>
-              <div className="product-search"><span>⌖ São Paulo, SP</span><span>Dentistas</span><button><Search size={14}/> Buscar</button></div>
-              <div className="product-content-grid"><div className="product-leads"><div className="product-lead selected"><div className="lead-avatar">CS</div><div><b>Clínica Sorriso Vivo</b><small>★ 4,8 · Moema</small></div><strong>92</strong></div><div className="product-lead"><div className="lead-avatar">OP</div><div><b>OdontoCenter Paulista</b><small>★ 4,6 · Bela Vista</small></div><strong>87</strong></div><div className="product-lead"><div className="lead-avatar">DP</div><div><b>Dental Prime SP</b><small>★ 4,9 · Pinheiros</small></div><strong>81</strong></div><div className="product-lead"><div className="lead-avatar">SS</div><div><b>Sorriso & Saúde</b><small>★ 4,7 · Itaim Bibi</small></div><strong>76</strong></div></div>
-                <div className="product-detail"><span className="detail-icon"><Target size={19}/></span><b>Clínica Sorriso Vivo</b><small>(11) 3000-0000 · São Paulo, SP</small><button>✓ Em minha prospecção</button><label>Estágio: <b>Novo</b></label><button className="detail-ai"><Sparkles size={14}/> Gerar abordagem</button></div></div>
+              <div className="product-heading"><div><small>VISÃO GERAL</small><h3>Olá, Willian!</h3><p>Aqui está um resumo do seu progresso hoje.</p></div><span className="product-avatar">WI</span></div>
+              <div className="product-stats">
+                <div><Search size={14}/><b>10</b><span>Leads encontrados</span><small>+12% este mês</small></div>
+                <div><Target size={14}/><b>3</b><span>Leads em prospecção</span><small>Em andamento</small></div>
+                <div><CalendarDays size={14}/><b>2</b><span>Follow-ups</span><small>Próximos</small></div>
+                <div><TrendingUp size={14}/><b>R$ 4.850</b><span>Receita gerada</span><small>+18% este mês</small></div>
+              </div>
+              <div className="product-dashboard-grid">
+                <div className="product-panel"><div className="product-panel-head"><b>Próximos follow-ups</b><span>Ver agenda</span></div>
+                  <div className="product-task"><span className="task-time">09:30</span><div><b>Retornar contato</b><small>Clínica Sorriso Vivo</small></div><strong>Hoje</strong></div>
+                  <div className="product-task"><span className="task-time">14:00</span><div><b>Enviar proposta</b><small>Odonto Center Paulista</small></div><strong>Amanhã</strong></div>
+                  <div className="product-task"><span className="task-time">16:30</span><div><b>Fazer primeiro contato</b><small>Dental Prime SP</small></div><strong>Quinta</strong></div>
+                </div>
+                <div className="product-panel"><div className="product-panel-head"><b>Leads quentes</b><span>Minha prospecção</span></div>
+                  <div className="product-hot"><span className="hot-avatar">CS</span><div><b>Clínica Sorriso Vivo</b><small>Reunião · Score 92</small></div><strong>92</strong></div>
+                  <div className="product-hot"><span className="hot-avatar">OP</span><div><b>Odonto Center</b><small>Proposta · Score 87</small></div><strong>87</strong></div>
+                  <div className="product-hot"><span className="hot-avatar">DP</span><div><b>Dental Prime</b><small>Respondeu · Score 81</small></div><strong>81</strong></div>
+                </div>
+              </div>
+              <div className="product-next"><Sparkles size={14}/><div><b>Seu próximo passo</b><span>Você tem leads quentes esperando uma ação.</span></div><button>Ver prospecção <ArrowUpRight size={11}/></button></div>
             </div>
           </div>
         </div>
-        <div className="product-caption"><span><i/> Dados organizados</span><span><i/> CRM integrado</span><span><i/> IA para abordagem</span></div>
+        <div className="product-caption"><span><i/> Mesmo Dashboard</span><span><i/> Mesmo CRM</span><span><i/> Mesmos recursos</span></div>
       </div>
     </section>
 
