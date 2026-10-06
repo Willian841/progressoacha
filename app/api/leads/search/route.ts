@@ -51,9 +51,12 @@ export async function POST(request:Request) {
       const category=segment || t.amenity || t.shop || t.office || t.tourism || "Outros";
       return {user_id:user.id,name:t.name || "Empresa sem nome",segment:category,country:"Brasil",state:state || t["addr:state"] || "",city:city || t["addr:city"] || cityName,area:t["addr:suburb"] || "",address,phone,website,website_status:website ? "found" : "not_found",opportunity_score:website ? 72 : 88,source:"openstreetmap",source_id:String(e.id),latitude:lat,longitude:lon};
     }).filter((r:any)=>r.name && r.name !== "Empresa sem nome").slice(0,100);
-    if(rows.length) await supabase.from("leads").upsert(rows,{onConflict:"user_id,source,source_id"});
     const {data:usageResult,error:usageError} = await supabase.rpc("consume_search",{p_segment:segment||undefined,p_country:"Brasil",p_state:state||undefined,p_city:city||cityName,p_area:undefined,p_filters:{query,source:"openstreetmap"},p_result_count:rows.length});
-    if(usageError || !usageResult?.[0]?.allowed) return NextResponse.json({error:"Não foi possível registrar o uso da busca."},{status:400});
+    if(usageError || !usageResult?.[0]?.allowed) return NextResponse.json({error:"Limite do plano atingido ou não foi possível registrar o uso."},{status:402});
+    if(rows.length) {
+      const {error:upsertError} = await supabase.from("leads").upsert(rows,{onConflict:"user_id,source,source_id"});
+      if(upsertError) return NextResponse.json({error:"A busca foi registrada, mas não foi possível salvar os leads."},{status:500});
+    }
     return NextResponse.json({leads:rows,usage:usageResult[0]});
   } catch(error) { console.error(error); return NextResponse.json({error:"Erro ao realizar a busca."},{status:500}); }
 }
