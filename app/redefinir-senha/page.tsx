@@ -50,6 +50,7 @@ export default function ResetPasswordPage() {
 
   async function submit(e:FormEvent) {
     e.preventDefault(); setError(""); setMessage("");
+    if(password.length > 128){ setError("A senha deve ter no máximo 128 caracteres."); return; }
     if(password.length < 6){ setError("A senha precisa ter pelo menos 6 caracteres."); return; }
     if(password !== confirm){ setError("As senhas não conferem."); return; }
     setLoading(true);
@@ -69,8 +70,8 @@ export default function ResetPasswordPage() {
     <div className="auth-brand"><div className="logo"><Sparkles size={17}/></div><div><b>Progresso</b><span>ACHA</span></div></div>
     <div className="auth-copy"><div className="eyebrow"><span className="pulse"/> NOVA SENHA</div><h1>Defina uma nova senha.</h1><p>Escolha uma senha forte para proteger seu acesso ao Progresso Acha.</p></div>
     {checking ? <div className="auth-success">Validando seu link de recuperação...</div> : message ? <div className="auth-success">{message}</div> : ready ? <form onSubmit={submit} className="auth-form">
-      <label>Nova senha<input type="password" required minLength={6} value={password} onChange={e=>setPassword(e.target.value)} placeholder="Mínimo de 6 caracteres"/></label>
-      <label>Confirmar senha<input type="password" required minLength={6} value={confirm} onChange={e=>setConfirm(e.target.value)} placeholder="Digite novamente"/></label>
+      <label>Nova senha<input type="password" required minLength={6} maxLength={128} value={password} onChange={e=>setPassword(e.target.value)} placeholder="Mínimo de 6 caracteres"/></label>
+      <label>Confirmar senha<input type="password" required minLength={6} maxLength={128} value={confirm} onChange={e=>setConfirm(e.target.value)} placeholder="Digite novamente"/></label>
       {error && <div className="auth-error">{error}</div>}
       <button className="primary auth-submit" disabled={loading}>{loading?"Atualizando...":"Salvar nova senha"} <ArrowRight size={15}/></button>
     </form> : <div className="auth-error">{error || "Não foi possível validar o link de recuperação."}</div>}
