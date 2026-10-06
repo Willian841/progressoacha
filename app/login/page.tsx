@@ -2,7 +2,7 @@
 
 import { FormEvent, useState } from "react";
 import Link from "next/link";
-import { ArrowRight, Eye, EyeOff, Sparkles } from "lucide-react";
+import { ArrowRight, Eye, EyeOff, Sparkles, Search, KanbanSquare, TrendingUp } from "lucide-react";
 import { createClient } from "../../lib/supabase-browser";
 
 export default function LoginPage() {
