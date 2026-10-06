@@ -15,12 +15,15 @@ export default function SignupPage() {
 
   async function submit(e:FormEvent) {
     e.preventDefault(); setLoading(true); setError(""); setMessage("");
+    const cleanName=name.trim();
+    const cleanEmail=email.trim().toLowerCase();
+    if(cleanName.length<2){setError("Informe seu nome para continuar.");setLoading(false);return;}
     try {
       const redirectTo = `${window.location.origin}/login`;
       const { error } = await createClient().auth.signUp({
-        email, password,
+        email:cleanEmail, password,
         options:{
-          data:{ full_name:name },
+          data:{ full_name:cleanName },
           emailRedirectTo: redirectTo,
         }
       });
