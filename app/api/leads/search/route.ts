@@ -59,18 +59,19 @@ export async function POST(request:Request) {
     const {data:{user}} = await supabase.auth.getUser();
     if (!user) return NextResponse.json({error:"Não autenticado."},{status:401});
 
-    const cityName = city || query;
-    const areaRegex = escapeRegex(cityName);
+    const cityName = city;
     const inferredTerm = !segment ? (query.match(/^(.*?)\s+(?:em|na|no)\s+/i)?.[1]?.trim() || "") : "";
     const genericTerms = new Set(["empresa","empresas","negócio","negocios","negócios","comércio","comercio","lojas"]);
     const searchTerm = genericTerms.has(inferredTerm.toLowerCase()) ? "" : inferredTerm;
     const filter = tagFilter(segment, searchTerm);
     const stateIso = STATE_ISO[state];
     const stateScope = stateIso ? 'area["ISO3166-2"="' + stateIso + '"]->.stateArea;' : 'area["ISO3166-1"="BR"]->.countryArea;';
-    const cityScope = stateIso
-      ? 'area["name"~"^' + areaRegex + '$",i]["boundary"="administrative"]["admin_level"~"6|7|8"](area.stateArea)->.searchArea;'
-      : 'area["name"~"^' + areaRegex + '$",i]["boundary"="administrative"]["admin_level"~"6|7|8"](area.countryArea)->.searchArea;';
-    const q = "[out:json][timeout:25];" + stateScope + cityScope + "nwr(area.searchArea)" + filter + ";out center tags;";
+    const searchScope = cityName
+      ? (stateIso
+        ? 'area["name"~"^' + escapeRegex(cityName) + '$",i]["boundary"="administrative"]["admin_level"~"6|7|8"](area.stateArea)->.searchArea;'
+        : 'area["name"~"^' + escapeRegex(cityName) + '$",i]["boundary"="administrative"]["admin_level"~"6|7|8"](area.countryArea)->.searchArea;')
+      : (stateIso ? 'area.stateArea->.searchArea;' : 'area.countryArea->.searchArea;');
+    const q = "[out:json][timeout:25];" + stateScope + searchScope + "nwr(area.searchArea)" + filter + ";out center tags;";
 
     const response = await fetch(OVERPASS_URL,{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded","User-Agent":"ProgressoAcha/0.1 (lead prospecting app)"},body:new URLSearchParams({data:q}),cache:"no-store"});
     if(!response.ok) return NextResponse.json({error:"A fonte de dados está temporariamente indisponível."},{status:503});
@@ -85,7 +86,7 @@ export async function POST(request:Request) {
       const hasAddress = Boolean(address);
       const hasArea = Boolean(t["addr:suburb"]);
       const score = Math.min(100, 45 + (website ? 0 : 25) + (hasPhone ? 10 : 0) + (hasAddress ? 8 : 0) + (hasArea ? 4 : 0));
-      return {user_id:user.id,name:t.name || "Empresa sem nome",segment:category,country:"Brasil",state:state || t["addr:state"] || "",city:city || t["addr:city"] || cityName,area:t["addr:suburb"] || "",address,phone,website,website_status:website ? "found" : "not_found",opportunity_score:score,source:"openstreetmap",source_id:String(e.id),latitude:lat,longitude:lon};
+      return {user_id:user.id,name:t.name || "Empresa sem nome",segment:category,country:"Brasil",state:state || t["addr:state"] || "",city:city || t["addr:city"] || "",area:t["addr:suburb"] || "",address,phone,website,website_status:website ? "found" : "not_found",opportunity_score:score,source:"openstreetmap",source_id:String(e.id),latitude:lat,longitude:lon};
     }).filter((r:any)=>r.name && r.name !== "Empresa sem nome").slice(0,100);
 
     const {data:usageResult,error:usageError} = await supabase.rpc("consume_search",{p_segment:segment||undefined,p_country:"Brasil",p_state:state||undefined,p_city:city||cityName,p_area:undefined,p_filters:{query,source:"openstreetmap"},p_result_count:rows.length});
