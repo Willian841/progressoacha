@@ -19,6 +19,7 @@ export default function SignupPage() {
     const cleanEmail=email.trim().toLowerCase();
     if(cleanName.length<2){setError("Informe seu nome para continuar.");setLoading(false);return;}
     if(!/^\S+@\S+\.\S+$/.test(cleanEmail)){setError("Informe um e-mail válido.");setLoading(false);return;}
+    if(password.length>128) throw new Error("A senha deve ter no máximo 128 caracteres.");
     if(password.length<6){setError("A senha precisa ter pelo menos 6 caracteres.");setLoading(false);return;}
     try {
       const redirectTo = `${window.location.origin}/login`;
@@ -59,7 +60,7 @@ export default function SignupPage() {
     <form onSubmit={submit} className="auth-form">
       <label>Nome<input required value={name} onChange={e=>setName(e.target.value)} placeholder="Seu nome"/></label>
       <label>E-mail<input type="email" required value={email} onChange={e=>setEmail(e.target.value)} placeholder="voce@empresa.com"/></label>
-      <label>Senha<input type="password" required minLength={6} value={password} onChange={e=>setPassword(e.target.value)} placeholder="Mínimo de 6 caracteres"/></label>
+      <label>Senha<input type="password" required minLength={6} value={password} onChange={e=>setPassword(e.target.value)} maxLength={128} placeholder="Mínimo de 6 caracteres"/></label>
       {error && <div className="auth-error">{error}</div>}{message && <div className="auth-success">{message}</div>}
       <button className="primary auth-submit" disabled={loading}>{loading?"Criando...":"Criar minha conta"} <ArrowRight size={15}/></button>
     </form>
