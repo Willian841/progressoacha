@@ -60,7 +60,7 @@ export async function POST(request:Request) {
     if (!user) return NextResponse.json({error:"Não autenticado."},{status:401});
 
     const cityName = city;
-    const inferredTerm = !segment ? (query.match(/^(.*?)\s+(?:em|na|no)\s+/i)?.[1]?.trim() || "") : "";
+    const inferredTerm = !segment ? (query.match(/^(.*?)\s+(?:em|na|no)\s+/i)?.[1]?.trim() || (cityName ? query : "")) : "";
     const genericTerms = new Set(["empresa","empresas","negócio","negocios","negócios","comércio","comercio","lojas"]);
     const searchTerm = genericTerms.has(inferredTerm.toLowerCase()) ? "" : inferredTerm;
     const filter = tagFilter(segment, searchTerm);
