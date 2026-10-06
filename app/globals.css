@@ -164,3 +164,17 @@
 .landing-mobile-nav{display:none}.landing-footer{position:relative;z-index:2;width:min(1200px,calc(100% - 56px));margin:0 auto;padding:30px 0 28px;border-top:1px solid rgba(127,145,165,.10);display:grid;grid-template-columns:1fr auto;gap:20px;align-items:center}.landing-footer b{font-size:11px;letter-spacing:.2px}.landing-footer b span{color:#14dfc2}.landing-footer p{margin:7px 0 0;color:#5f747c;font-size:8px}.landing-footer-links{display:flex;align-items:center;gap:18px}.landing-footer-links a,.landing-footer-links button{border:0;background:transparent;color:#6f838b;text-decoration:none;font:500 8px 'Space Grotesk';cursor:pointer}.landing-footer-links a:hover,.landing-footer-links button:hover{color:#d8e7e9}.landing-footer>small{grid-column:1 / -1;color:#40545d;font-size:7px}
 @media(max-width:760px){.landing-mobile-nav{display:block;position:relative}.landing-mobile-nav summary{display:grid;place-items:center;width:36px;height:36px;border:1px solid rgba(127,145,165,.14);border-radius:9px;color:#b8c9ce;cursor:pointer;list-style:none}.landing-mobile-nav summary::-webkit-details-marker{display:none}.landing-mobile-nav>div{position:absolute;right:0;top:45px;width:190px;padding:8px;border:1px solid rgba(127,145,165,.15);border-radius:12px;background:#07141b;box-shadow:0 18px 50px rgba(0,0,0,.45);display:grid;gap:2px}.landing-mobile-nav a,.landing-mobile-nav button{padding:10px;border:0;border-radius:7px;background:transparent;color:#a8b8bd;text-align:left;text-decoration:none;font:500 10px 'Space Grotesk'}.landing-mobile-nav a:hover,.landing-mobile-nav button:hover{background:rgba(0,242,254,.06);color:#16e5c7}.landing-footer{width:calc(100% - 28px);grid-template-columns:1fr;padding-bottom:22px}.landing-footer-links{flex-wrap:wrap;gap:12px}.landing-footer>small{grid-column:auto}}
 @media(min-width:761px){.landing-mobile-nav{display:none!important}}
+
+/* Landing: tablet layout */
+@media(max-width:1100px){
+  .landing-header{width:calc(100% - 32px)}
+  .landing-nav{display:none}
+  .landing-mobile-nav{display:block;position:relative}
+  .landing-hero{width:calc(100% - 32px);grid-template-columns:1fr;gap:34px;padding-top:22px}
+  .landing-copy{max-width:760px;margin:0 auto;width:100%}
+  .landing-product-wrap{width:min(920px,100%);margin:0 auto}
+}
+@media(max-width:760px){
+  .landing-hero{width:calc(100% - 28px);padding-top:10px}
+  .landing-header{width:calc(100% - 22px)}
+}
