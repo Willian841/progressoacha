@@ -382,11 +382,15 @@ function Revenue({leads,revenue,notify}:{leads:LeadRow[];revenue:number;notify:(
       const {error}=await supabase.from("sales").insert({user_id:userData.user.id,lead_id:leadId||null,amount:numeric,status,sold_at:soldAt?new Date(soldAt).toISOString():new Date().toISOString()});
       if(error){notify("Não foi possível registrar a venda.");return;}
       if(status==="won"&&leadId){
-        await supabase.from("pipeline_items").upsert({user_id:userData.user.id,lead_id:leadId,stage:"sale"},{onConflict:"user_id,lead_id"});
+        const {error:pipelineError}=await supabase.from("pipeline_items").upsert({user_id:userData.user.id,lead_id:leadId,stage:"sale"},{onConflict:"user_id,lead_id"});
+        if(pipelineError){
+          setAmount("");setLeadId("");setStatus("won");setSoldAt("");setOpen(false);await load();
+          notify("Venda registrada, mas o estágio do CRM não foi atualizado.");
+          return;
+        }
       }
       setAmount("");setLeadId("");setStatus("won");setSoldAt("");setOpen(false);await load();
       notify("Venda registrada com sucesso.");
-      window.location.reload();
     }finally{setSaving(false);}
   };
 
