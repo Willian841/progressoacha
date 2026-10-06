@@ -39,7 +39,6 @@ function tagFilter(segment:string, searchTerm="") {
   if (map[s]) return map[s];
   return searchTerm ? `["name"~"${escapeRegex(searchTerm)}",i]` : '["name"]';
 }
-}
 
 const STATE_ISO:Record<string,string> = {
   AC:"BR-AC", AL:"BR-AL", AP:"BR-AP", AM:"BR-AM", BA:"BR-BA", CE:"BR-CE", DF:"BR-DF", ES:"BR-ES",
@@ -62,7 +61,10 @@ export async function POST(request:Request) {
 
     const cityName = city || query;
     const areaRegex = escapeRegex(cityName);
-    const filter = tagFilter(segment);
+    const inferredTerm = !segment ? (query.match(/^(.*?)\s+(?:em|na|no)\s+/i)?.[1]?.trim() || "") : "";
+    const genericTerms = new Set(["empresa","empresas","negócio","negocios","negócios","comércio","comercio","lojas"]);
+    const searchTerm = genericTerms.has(inferredTerm.toLowerCase()) ? "" : inferredTerm;
+    const filter = tagFilter(segment, searchTerm);
     const stateIso = STATE_ISO[state];
     const stateScope = stateIso ? 'area["ISO3166-2"="' + stateIso + '"]->.stateArea;' : 'area["ISO3166-1"="BR"]->.countryArea;';
     const cityScope = stateIso
