@@ -51,13 +51,13 @@ Os limites são aplicados no banco por RPCs transacionais, não somente pela int
 | Pro | 300/mês | 40 | 200 |
 | Infinity | ilimitadas | 40 | 1000 |
 
-## Próximas integrações de produção
+## Próximos aprimoramentos
 
-1. Checkout real e webhooks para ativar/trocar planos.
-2. Provedor real de leads (Google Maps/API ou fonte licenciada).
-3. Provedor de IA real para diagnóstico e abordagens personalizadas.
-4. Melhorias finais de analytics históricos e notificações.
-5. QA de build/deploy com as variáveis de produção configuradas.
+1. Ativar o Mercado Pago em produção após configurar credenciais, URL pública e webhook.
+2. Conectar um provedor real de leads (Google Maps/API ou fonte licenciada).
+3. Conectar um provedor de IA real para diagnóstico e abordagens personalizadas.
+4. Evoluir analytics históricos e notificações.
+5. Fazer QA contínuo dos fluxos comerciais com as configurações de produção.
 
 As integrações externas não devem usar chaves secretas no cliente. Segredos de pagamento, IA e provedores de leads devem ficar no servidor/Edge Functions.
 
