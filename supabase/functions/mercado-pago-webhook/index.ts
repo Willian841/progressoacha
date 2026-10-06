@@ -104,15 +104,17 @@ async function syncPreapproval(preapprovalId: string, accessToken: string, admin
   if (subscriptionError) return false;
 
   if (status === "authorized") {
-    await admin.from("profiles").update({
+    const { error: profileError } = await admin.from("profiles").update({
       plan_code: localSub.plan_code,
       updated_at: new Date().toISOString(),
     }).eq("id", localSub.user_id);
+    if (profileError) return false;
   } else if (status === "cancelled" || status === "paused") {
-    await admin.from("profiles").update({
+    const { error: profileError } = await admin.from("profiles").update({
       plan_code: "free",
       updated_at: new Date().toISOString(),
     }).eq("id", localSub.user_id);
+    if (profileError) return false;
   }
   return true;
 }
