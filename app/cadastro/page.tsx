@@ -17,7 +17,9 @@ export default function SignupPage() {
     e.preventDefault(); setLoading(true); setError(""); setMessage("");
     const cleanName=name.trim();
     const cleanEmail=email.trim().toLowerCase();
-    if(cleanName.length<2){setError("Informe seu nome para continuar.");setLoading(false);return;}\n    if(!/^\\S+@\\S+\\.\\S+$/.test(cleanEmail)){setError("Informe um e-mail válido.");setLoading(false);return;}\n    if(password.length<6){setError("A senha precisa ter pelo menos 6 caracteres.");setLoading(false);return;}
+    if(cleanName.length<2){setError("Informe seu nome para continuar.");setLoading(false);return;}
+    if(!/^\\S+@\\S+\\.\\S+$/.test(cleanEmail)){setError("Informe um e-mail válido.");setLoading(false);return;}
+    if(password.length<6){setError("A senha precisa ter pelo menos 6 caracteres.");setLoading(false);return;}
     try {
       const redirectTo = `${window.location.origin}/login`;
       const { error } = await createClient().auth.signUp({
@@ -62,5 +64,7 @@ export default function SignupPage() {
       <button className="primary auth-submit" disabled={loading}>{loading?"Criando...":"Criar minha conta"} <ArrowRight size={15}/></button>
     </form>
     <div className="social-proof"><div className="social-proof-head"><div><span className="proof-kicker">EXPERIÊNCIA PROGRESSO ACHA</span><strong>Feito para quem quer prospectar mais.</strong></div><div className="proof-rating">★★★★★<small>Exemplos demonstrativos</small></div></div><div className="testimonial-grid"><article><p>“Uma forma muito mais organizada de transformar pesquisa em oportunidades comerciais.”</p><span>Empreendedor • exemplo</span></article><article><p>“O funil ajuda a não perder o timing de cada contato e deixa a operação muito mais clara.”</p><span>Profissional de vendas • exemplo</span></article></div></div><div className="auth-links"><span>Já tem conta?</span><Link href="/login">Entrar</Link></div>
-      </section>\n    </div>\n  </main>;
+      </section>
+    </div>
+  </main>;
 }
