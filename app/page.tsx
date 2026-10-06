@@ -572,6 +572,14 @@ function AdminPage({notify}:{notify:(s:string)=>void}) {
     notify(error?"Não foi possível salvar o plano.":"Plano atualizado com sucesso.");
   };
   const saveGateway=async()=>{
+    if(gateway.provider==="mercado_pago" && gateway.enabled && !gateway.webhook_url.trim()){
+      notify("Informe a URL do webhook antes de ativar o Mercado Pago.");
+      return;
+    }
+    if(gateway.mode!=="test" && gateway.mode!=="live"){
+      notify("Selecione um modo válido para a gateway.");
+      return;
+    }
     setSaving("gateway");
     const supabase=createClient() as any; const {data:userData}=await supabase.auth.getUser();
     const {error}=await supabase.from("gateway_settings").update({...gateway,updated_at:new Date().toISOString()}).eq("id",true);
