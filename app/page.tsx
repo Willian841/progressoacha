@@ -560,6 +560,10 @@ function AdminPage({notify}:{notify:(s:string)=>void}) {
     setPlans(prev=>prev.map(p=>p.plan_code===code?{...p,[key]:key==="price"?Number(value.replace(",",".")):value===""?null:Number(value)}:p));
   };
   const savePlan=async(plan:typeof plans[number])=>{
+    if(!Number.isFinite(plan.price)||plan.price<0||!Number.isFinite(plan.companies_per_search)||plan.companies_per_search<1||((plan.search_limit??0)<0)||((plan.ai_limit??0)<0)){
+      notify("Revise os valores do plano antes de salvar.");
+      return;
+    }
     setSaving(plan.plan_code);
     const supabase=createClient() as any; const {data:userData}=await supabase.auth.getUser();
     const {error}=await supabase.from("plan_settings").update({price:plan.price,search_limit:plan.search_limit,companies_per_search:plan.companies_per_search,ai_limit:plan.ai_limit,updated_at:new Date().toISOString()}).eq("plan_code",plan.plan_code);
