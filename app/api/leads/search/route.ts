@@ -6,7 +6,9 @@ const OVERPASS_URL = "https://overpass-api.de/api/interpreter";
 function escapeRegex(value:string) { return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); }
 function inferSegment(query:string) {
   const q = query.toLowerCase();
-  if (/(restaurante|restaurantes|pizzaria|lanchonete|bar)/.test(q)) return "restaurante";
+  if (/(restaurante|restaurantes|pizzaria)/.test(q)) return "restaurante";
+  if (/(lanchonete|fast[ -]?food)/.test(q)) return "lanchonete";
+  if (/\bbar\b/.test(q)) return "bar";
   if (/(academia|fitness)/.test(q)) return "academia";
   if (/(advogado|advocacia)/.test(q)) return "advocacia";
   if (/dentista/.test(q)) return "dentista";
@@ -24,17 +26,19 @@ function inferCity(query:string) {
   return match?.[1]?.trim() || "";
 }
 
-function tagFilter(segment:string) {
+function tagFilter(segment:string, searchTerm="") {
   const s = segment.toLowerCase().trim();
   const map:Record<string,string> = {
-    restaurante:'["amenity"="restaurant"]', restaurantes:'["amenity"="restaurant"]', pizzaria:'["amenity"="restaurant"]',
+    restaurante:'["amenity"~"restaurant|fast_food"]', restaurantes:'["amenity"~"restaurant|fast_food"]', pizzaria:'["amenity"="restaurant"]', lanchonete:'["amenity"="fast_food"]', bar:'["amenity"="bar"]',
     academia:'["leisure"="fitness_centre"]', advogado:'["office"="lawyer"]', advocacia:'["office"="lawyer"]',
     dentista:'["amenity"="dentist"]', clínica:'["amenity"="clinic"]', clinica:'["amenity"="clinic"]',
     hotel:'["tourism"="hotel"]', hotéis:'["tourism"="hotel"]', hotelaria:'["tourism"="hotel"]',
     loja:'["shop"]', comércio:'["shop"]', comercio:'["shop"]', mercado:'["shop"="supermarket"]',
     farmácia:'["amenity"="pharmacy"]', farmacia:'["amenity"="pharmacy"]', salão:'["shop"="hairdresser"]', salao:'["shop"="hairdresser"]'
   };
-  return map[s] || '["name"]';
+  if (map[s]) return map[s];
+  return searchTerm ? `["name"~"${escapeRegex(searchTerm)}",i]` : '["name"]';
+}
 }
 
 const STATE_ISO:Record<string,string> = {
