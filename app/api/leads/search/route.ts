@@ -2,6 +2,10 @@ import { NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
 
 const OVERPASS_URL = "https://overpass-api.de/api/interpreter";
+const MAX_QUERY_LENGTH = 120;
+const MAX_SEGMENT_LENGTH = 60;
+const MAX_CITY_LENGTH = 80;
+const MAX_STATE_LENGTH = 2;
 
 function escapeRegex(value:string) { return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); }
 function inferSegment(query:string) {
@@ -50,10 +54,10 @@ const STATE_ISO:Record<string,string> = {
 export async function POST(request:Request) {
   try {
     const body = await request.json();
-    const query = String(body.query || "").trim();
-    const segment = String(body.segment || "").trim() || inferSegment(query);
-    const city = String(body.city || "").trim() || inferCity(query);
-    const state = String(body.state || "").trim().toUpperCase();
+    const query = String(body.query || "").trim().slice(0,MAX_QUERY_LENGTH);
+    const segment = (String(body.segment || "").trim() || inferSegment(query)).slice(0,MAX_SEGMENT_LENGTH);
+    const city = (String(body.city || "").trim() || inferCity(query)).slice(0,MAX_CITY_LENGTH);
+    const state = String(body.state || "").trim().toUpperCase().slice(0,MAX_STATE_LENGTH);
     if (!city && !query) return NextResponse.json({error:"Informe uma cidade ou termo de busca."},{status:400});
     const supabase = await createServerSupabaseClient();
     const {data:{user}} = await supabase.auth.getUser();
