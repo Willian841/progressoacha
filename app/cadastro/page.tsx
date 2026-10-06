@@ -19,7 +19,7 @@ export default function SignupPage() {
     const cleanEmail=email.trim().toLowerCase();
     if(cleanName.length<2){setError("Informe seu nome para continuar.");setLoading(false);return;}
     if(!/^\S+@\S+\.\S+$/.test(cleanEmail)){setError("Informe um e-mail válido.");setLoading(false);return;}
-    if(password.length>128) throw new Error("A senha deve ter no máximo 128 caracteres.");
+    if(password.length>128){setError("A senha deve ter no máximo 128 caracteres.");setLoading(false);return;}
     if(password.length<6){setError("A senha precisa ter pelo menos 6 caracteres.");setLoading(false);return;}
     try {
       const redirectTo = `${window.location.origin}/login`;
