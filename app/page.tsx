@@ -30,7 +30,7 @@ function commercialMessage(name:string) {
 const stages = ["Tudo","Selecionado","Contatado","Respondeu","Reunião","Proposta","Venda","Descartado"];
 const stageToDb: Record<string,string> = { Selecionado:"selected", Contatado:"contacted", Respondeu:"replied", "Reunião":"meeting", Proposta:"proposal", Venda:"sale", Descartado:"discarded" };
 const dbToStage: Record<string,string> = Object.fromEntries(Object.entries(stageToDb).map(([ui,db]) => [db,ui]));
-type LeadRow = { id:string; name:string; segment:string; location:string; country:string; state:string; city:string; area:string; hasSite:boolean; score:number; phone:string };
+type LeadRow = { id:string; name:string; segment:string; location:string; country:string; state:string; city:string; area:string; hasSite:boolean; score:number; phone:string; address?:string; latitude?:number|null; longitude?:number|null };
 
 export default function Home() {
   const [active,setActive] = useState("Dashboard");
@@ -78,14 +78,14 @@ export default function Home() {
         const { data: usageRow } = await supabase.from("usage_monthly").select("search_count,ai_count").eq("user_id", data.user.id).eq("month_start", monthStart.toISOString().slice(0,10)).maybeSingle();
         setSearchUsage({used: currentPlan === "free" ? (totalSearches || 0) : (usageRow?.search_count || 0), limit: limitRow?.search_limit ?? null});
         setAiUsage({used: usageRow?.ai_count || 0, limit: limitRow?.ai_limit ?? null});
-        let result = await supabase.from("leads").select("id,name,segment,country,state,city,area,website_status,opportunity_score,phone").order("opportunity_score",{ascending:false}).limit(50);
+        let result = await supabase.from("leads").select("id,name,segment,country,state,city,area,address,website_status,opportunity_score,phone,latitude,longitude").order("opportunity_score",{ascending:false}).limit(50);
         if (!result.data?.length) {
           const seed = leads.map(l => ({user_id:data.user.id,name:l[0],segment:l[1],city:l[2].split(", ")[0] || null,state:l[2].split(", ")[1] || null,country:"Brasil",phone:l[5],website_status:l[3] ? "found" : "not_found",opportunity_score:l[4],source:"demo"}));
           await supabase.from("leads").insert(seed);
           result = await supabase.from("leads").select("id,name,segment,city,state,website_status,opportunity_score,phone").order("opportunity_score",{ascending:false}).limit(50);
         }
         if (result.data?.length) {
-          setDbLeads(result.data.map((r:any) => ({id:r.id,name:r.name,segment:r.segment || "Outros",location:[r.city,r.state].filter(Boolean).join(", "),country:r.country || "Brasil",state:r.state || "",city:r.city || "",area:r.area || "",hasSite:r.website_status === "found",score:r.opportunity_score,phone:r.phone || ""})));
+          setDbLeads(result.data.map((r:any) => ({id:r.id,name:r.name,segment:r.segment || "Outros",location:[r.city,r.state].filter(Boolean).join(", "),country:r.country || "Brasil",state:r.state || "",city:r.city || "",area:r.area || "",hasSite:r.website_status === "found",score:r.opportunity_score,phone:r.phone || "",address:r.address || "",latitude:r.latitude ?? null,longitude:r.longitude ?? null})));
           const { data:pipelineRows } = await supabase.from("pipeline_items").select("lead_id,stage");
           const saved:Record<string,string> = {};
           pipelineRows?.forEach((row:any) => { saved[row.lead_id] = dbToStage[row.stage] || "Selecionado"; });
@@ -142,7 +142,7 @@ export default function Home() {
       <header><button className="hamb" onClick={()=>setMobile(true)}><Menu/></button><div className="crumb">Workspace <ChevronRight size={13}/> <b>{active}</b></div><div className="actions"><button><Globe2 size={17}/></button><button className="notify"><MessageCircle size={17}/><i/></button><div className="avatar">{userName.slice(0,2).toUpperCase()}</div></div></header>
       <div className="content">
         {active==="Dashboard" && <Dashboard userName={userName} leads={dbLeads} pipeline={pipeline} revenue={revenue} onSearch={()=>setActive("Buscar Leads")} onPipeline={()=>setActive("Minha Prospecção")} notify={notify}/>}
-        {active==="Buscar Leads" && <Leads leads={dbLeads} query={query} setQuery={setQuery} notify={notify} searchUsage={searchUsage} setSearchUsage={setSearchUsage} planCode={planCode} setPipeline={setPipeline} />}
+        {active==="Buscar Leads" && <Leads leads={dbLeads} setLeads={setDbLeads} query={query} setQuery={setQuery} notify={notify} searchUsage={searchUsage} setSearchUsage={setSearchUsage} planCode={planCode} setPipeline={setPipeline} />}
         {active==="Minha Prospecção" && <Pipeline stage={stage} setStage={setStage} pipeline={pipeline} setPipeline={setPipeline} leads={dbLeads} notify={notify}/>}
         {active==="Planos" && <Plans notify={notify} currentPlan={planCode}/>}
         {active==="Agenda" && <Agenda leads={dbLeads} notify={notify}/>}
@@ -176,7 +176,7 @@ function Dashboard({userName,leads,pipeline,revenue,onSearch,onPipeline,notify}:
 
 function Stat({icon:Icon,label,value,note}:{icon:any,label:string,value:string,note:string}){return <div className="stat"><div className="stat-icon"><Icon size={18}/></div><div><span>{label}</span><b>{value}</b><small>{note}</small></div></div>}
 
-function Leads({leads,query,setQuery,notify,searchUsage,setSearchUsage,planCode,setPipeline}:{leads:LeadRow[],query:string,setQuery:(v:string)=>void,notify:(s:string)=>void,searchUsage:{used:number;limit:number|null},setSearchUsage:React.Dispatch<React.SetStateAction<{used:number;limit:number|null}>>,planCode:string,setPipeline:React.Dispatch<React.SetStateAction<Record<string,string>>>}) {
+function Leads({leads,setLeads,query,setQuery,notify,searchUsage,setSearchUsage,planCode,setPipeline}:{leads:LeadRow[],setLeads:React.Dispatch<React.SetStateAction<LeadRow[]>>,query:string,setQuery:(v:string)=>void,notify:(s:string)=>void,searchUsage:{used:number;limit:number|null},setSearchUsage:React.Dispatch<React.SetStateAction<{used:number;limit:number|null}>>,planCode:string,setPipeline:React.Dispatch<React.SetStateAction<Record<string,string>>>}) {
  const [advanced,setAdvanced]=useState(false);
  const [segmentFilter,setSegmentFilter]=useState("");
  const [stateFilter,setStateFilter]=useState("");
@@ -193,13 +193,17 @@ function Leads({leads,query,setQuery,notify,searchUsage,setSearchUsage,planCode,
      && l.score >= Number(scoreFilter);
  });
  const runSearch=async()=>{
-   const supabase=createClient() as any;
-   const {data,error}=await supabase.rpc("consume_search",{p_segment:segmentFilter||null,p_country:"Brasil",p_state:stateFilter||null,p_city:cityFilter||null,p_area:null,p_filters:{query,site:siteFilter,min_score:Number(scoreFilter)},p_result_count:filtered.length});
-   if(error||!data?.[0]){notify("Não foi possível validar o uso da busca.");return;}
-   const result=data[0];
-   if(!result.allowed){notify(`Limite do plano ${result.plan_code} atingido. Consulte Planos para continuar.`);return;}
-   setSearchUsage({used:result.used,limit:result.usage_limit});
-   notify(`Busca realizada. Uso: ${result.used}/${result.usage_limit===null?"∞":result.usage_limit}.`);
+   try{
+     const city = cityFilter || (query.match(/(?:em|na|no)\\s+(.+)$/i)?.[1] || "").trim();
+     const response = await fetch("/api/leads/search",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({query,segment:segmentFilter,city,state:stateFilter})});
+     const payload = await response.json();
+     if(!response.ok){notify(payload.error || "Não foi possível realizar a busca.");return;}
+     const rows:LeadRow[] = (payload.leads || []).map((r:any)=>({id:r.id || `osm-${r.source_id}`,name:r.name,segment:r.segment || segmentFilter || "Outros",location:[r.city,r.state].filter(Boolean).join(", "),country:r.country || "Brasil",state:r.state || "",city:r.city || "",area:r.area || "",hasSite:r.website_status === "found",score:Number(r.opportunity_score || 0),phone:r.phone || "",address:r.address || "",latitude:r.latitude ?? null,longitude:r.longitude ?? null}));
+     setLeads(prev=>{const map=new Map(prev.map(l=>[l.id,l])); rows.forEach(l=>map.set(l.id,l)); return Array.from(map.values()).sort((a,b)=>b.score-a.score);});
+     const usage=payload.usage;
+     if(usage) setSearchUsage({used:usage.used,limit:usage.usage_limit});
+     notify(`Busca real concluída: ${rows.length} empresas encontradas.`);
+   }catch(error){console.error(error);notify("Não foi possível realizar a busca agora.");}
  };
  return <><Header eyebrow="PROSPECÇÃO INTELIGENTE" title="Buscar Leads" text="Encontre empresas, identifique oportunidades e comece a conversa." action={<div className="usage"><span>Buscas</span><b>{searchUsage.used} / {searchUsage.limit === null ? "∞" : searchUsage.limit}</b><div><i style={{width:`${searchUsage.limit===null?100:Math.min(100,(searchUsage.used/Math.max(searchUsage.limit,1))*100)}%`}}/></div></div>}/>
  <div className="searchbar"><div><Search size={18}/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Ex.: restaurantes em Salvador..."/><kbd>⌘ K</kbd></div><button className={advanced?"secondary active-filter":"secondary"} onClick={()=>setAdvanced(v=>!v)}><Settings size={16}/> Filtros avançados</button><button className="primary" onClick={runSearch}>Buscar</button></div>
