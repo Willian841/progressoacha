@@ -55,14 +55,6 @@ export async function POST(request:Request) {
     const supabase = await createServerSupabaseClient();
     const {data:{user}} = await supabase.auth.getUser();
     if (!user) return NextResponse.json({error:"Não autenticado."},{status:401});
-    const {data:profile} = await supabase.from("profiles").select("plan_code").eq("id",user.id).maybeSingle();
-    const plan = profile?.plan_code || "free";
-    const {data:limits} = await supabase.rpc("plan_limits",{p_plan:plan});
-    const limit = limits?.[0]?.search_limit ?? 3;
-    const monthStart = new Date(); monthStart.setDate(1); monthStart.setHours(0,0,0,0);
-    const {data:usage} = await supabase.from("usage_monthly").select("search_count").eq("user_id",user.id).eq("month_start",monthStart.toISOString().slice(0,10)).maybeSingle();
-    const used = usage?.search_count || 0;
-    if (limit !== null && used >= limit) return NextResponse.json({error:"Limite do plano atingido.",plan_code:plan,used,limit},{status:402});
 
     const cityName = city || query;
     const areaRegex = escapeRegex(cityName);
