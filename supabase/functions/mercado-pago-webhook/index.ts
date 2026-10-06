@@ -6,6 +6,7 @@ Deno.serve(async (req: Request) => {
 
   try {
     const secret = Deno.env.get("MERCADO_PAGO_WEBHOOK_SECRET");
+    const MAX_SIGNATURE_AGE_SECONDS = 15 * 60;
     const accessToken = Deno.env.get("MERCADO_PAGO_ACCESS_TOKEN");
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
@@ -28,6 +29,11 @@ Deno.serve(async (req: Request) => {
       const ts = parts.ts;
       const v1 = parts.v1;
       if (!ts || !v1) return json({ error: "invalid_signature" }, 401);
+      const timestamp = Number(ts);
+      const nowSeconds = Math.floor(Date.now() / 1000);
+      if (!Number.isFinite(timestamp) || Math.abs(nowSeconds - timestamp) > MAX_SIGNATURE_AGE_SECONDS) {
+        return json({ error: "invalid_signature" }, 401);
+      }
 
       const manifest = "id:" + dataId + ";request-id:" + xRequestId + ";ts:" + ts + ";";
       const expected = await hmacSha256Hex(secret, manifest);
