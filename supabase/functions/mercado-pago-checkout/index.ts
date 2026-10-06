@@ -1,0 +1,106 @@
+import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+};
+
+Deno.serve(async (req: Request) => {
+  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+
+  try {
+    const accessToken = Deno.env.get("MERCADO_PAGO_ACCESS_TOKEN");
+    if (!accessToken) return json({ error: "mercado_pago_not_configured" }, 503);
+
+    const auth = req.headers.get("Authorization");
+    if (!auth) return json({ error: "not_authenticated" }, 401);
+
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY");
+    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    if (!supabaseUrl || !supabaseAnonKey || !serviceRoleKey) return json({ error: "supabase_not_configured" }, 500);
+
+    const userClient = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: auth } },
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
+    const { data: { user }, error: userError } = await userClient.auth.getUser();
+    if (userError || !user?.email) return json({ error: "not_authenticated" }, 401);
+
+    const body = await req.json().catch(() => ({}));
+    const planCode = typeof body.plan_code === "string" ? body.plan_code : "";
+    if (!["basic", "pro", "infinity"].includes(planCode)) return json({ error: "invalid_plan" }, 400);
+
+    const adminClient = createClient(supabaseUrl, serviceRoleKey, {
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
+
+    const [{ data: plan, error: planError }, { data: profile, error: profileError }, { data: subscription, error: subscriptionError }] = await Promise.all([
+      adminClient.from("plan_settings").select("plan_code,name,price").eq("plan_code", planCode).maybeSingle(),
+      adminClient.from("profiles").select("id,full_name,plan_code,role").eq("id", user.id).maybeSingle(),
+      adminClient.from("subscriptions").select("plan_code,status,provider_subscription_id").eq("user_id", user.id).maybeSingle(),
+    ]);
+
+    if (planError || profileError || subscriptionError || !plan || !profile) return json({ error: "workspace_not_found" }, 404);
+    if (profile.role === "admin") return json({ error: "admin_has_unlimited_access" }, 400);
+
+    if (subscription?.status === "active" && subscription.plan_code !== "free") {
+      if (subscription.plan_code === planCode) return json({ status: "already_active", plan_code: planCode });
+      return json({ error: "active_subscription_exists", plan_code: subscription.plan_code }, 409);
+    }
+
+    const origin = req.headers.get("origin") || Deno.env.get("APP_URL");
+    if (!origin) return json({ error: "app_url_not_configured" }, 500);
+
+    const amount = Number(plan.price);
+    if (!Number.isFinite(amount) || amount <= 0) return json({ error: "invalid_plan_price" }, 400);
+
+    const notificationUrl = supabaseUrl + "/functions/v1/mercado-pago-webhook?source_news=webhooks";
+    const mpResponse = await fetch("https://api.mercadopago.com/preapproval", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: "Bearer " + accessToken },
+      body: JSON.stringify({
+        reason: "Progresso Acha — " + plan.name,
+        external_reference: user.id,
+        payer_email: user.email,
+        notification_url: notificationUrl,
+        auto_recurring: { frequency: 1, frequency_type: "months", transaction_amount: amount, currency_id: "BRL" },
+        back_url: origin + "/?billing=return&plan=" + encodeURIComponent(planCode),
+      }),
+    });
+
+    const mpData = await mpResponse.json().catch(() => ({}));
+    if (!mpResponse.ok || !mpData?.init_point || !mpData?.id) {
+      console.error("Mercado Pago checkout error", mpResponse.status, mpData);
+      return json({ error: "mercado_pago_checkout_failed" }, 502);
+    }
+
+    const { error: upsertError } = await adminClient.from("subscriptions").upsert({
+      user_id: user.id,
+      plan_code: planCode,
+      status: "pending",
+      provider: "mercado_pago",
+      provider_subscription_id: String(mpData.id),
+      updated_at: new Date().toISOString(),
+    }, { onConflict: "user_id" });
+
+    if (upsertError) {
+      console.error("Subscription local upsert error", upsertError);
+      return json({ error: "subscription_store_failed" }, 500);
+    }
+
+    return json({ status: "checkout_created", plan_code: planCode, checkout_url: mpData.init_point, provider_subscription_id: String(mpData.id) });
+  } catch (error) {
+    console.error("mercado-pago-checkout unexpected error", error);
+    return json({ error: "internal_error" }, 500);
+  }
+});
+
+function json(body: Record<string, unknown>, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+}
