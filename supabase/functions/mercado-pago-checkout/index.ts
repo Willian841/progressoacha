@@ -45,6 +45,14 @@ Deno.serve(async (req: Request) => {
     if (planError || profileError || !plan || !profile) return json({ error: "workspace_not_found" }, 404);
     if (profile.role === "admin") return json({ error: "admin_has_unlimited_access" }, 400);
 
+    // Always use the configured canonical app URL for Mercado Pago redirects.
+    // Never trust a caller-controlled Origin header, otherwise checkout could become an open redirect.
+    const appUrl = Deno.env.get("APP_URL")?.replace(/\/+$/, "");
+    if (!appUrl) return json({ error: "app_url_not_configured" }, 500);
+
+    const amount = Number(plan.price);
+    if (!Number.isFinite(amount) || amount <= 0) return json({ error: "invalid_plan_price" }, 400);
+
     const { data: claim, error: claimError } = await adminClient.rpc("claim_checkout", {
       p_user_id: user.id,
       p_plan_code: planCode,
@@ -71,14 +79,6 @@ Deno.serve(async (req: Request) => {
       return json({ error: "invalid_checkout_state" }, 409);
     }
 
-    // Always use the configured canonical app URL for Mercado Pago redirects.
-    // Never trust a caller-controlled Origin header, otherwise checkout could become an open redirect.
-    const appUrl = Deno.env.get("APP_URL")?.replace(/\/+$/, "");
-    if (!appUrl) return json({ error: "app_url_not_configured" }, 500);
-
-    const amount = Number(plan.price);
-    if (!Number.isFinite(amount) || amount <= 0) return json({ error: "invalid_plan_price" }, 400);
-
     const notificationUrl = supabaseUrl + "/functions/v1/mercado-pago-webhook?source_news=webhooks";
     const mpResponse = await fetch("https://api.mercadopago.com/preapproval", {
       method: "POST",
@@ -96,6 +96,7 @@ Deno.serve(async (req: Request) => {
     const mpData = await mpResponse.json().catch(() => ({}));
     if (!mpResponse.ok || !mpData?.init_point || !mpData?.id) {
       console.error("Mercado Pago checkout error", mpResponse.status, mpData);
+      await releaseCheckout(adminClient, user.id);
       return json({ error: "mercado_pago_checkout_failed" }, 502);
     }
 
@@ -124,6 +125,16 @@ Deno.serve(async (req: Request) => {
     return json({ error: "internal_error" }, 500);
   }
 });
+
+async function releaseCheckout(admin: ReturnType<typeof createClient>, userId: string) {
+  const { error } = await admin.from("subscriptions").update({
+    status: "pending",
+    provider: null,
+    provider_subscription_id: null,
+    updated_at: new Date(Date.now() - 16 * 60 * 1000).toISOString(),
+  }).eq("user_id", userId).eq("status", "pending").is("provider_subscription_id", null);
+  if (error) console.error("Checkout release error", error);
+}
 
 function json(body: Record<string, unknown>, status = 200) {
   return new Response(JSON.stringify(body), {

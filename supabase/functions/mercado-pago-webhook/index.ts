@@ -105,11 +105,32 @@ async function syncPreapproval(preapprovalId: string, accessToken: string, admin
   const providerId = String(subscription.id);
   const status = String(subscription.status || "pending");
   const nextPayment = subscription.next_payment_date || null;
+  const externalReference = String(subscription.external_reference || "");
 
-  const { data: localSub } = await admin.from("subscriptions")
+  let { data: localSub } = await admin.from("subscriptions")
     .select("user_id,plan_code")
     .eq("provider_subscription_id", providerId)
     .maybeSingle();
+
+  // Mercado Pago can notify before the checkout function finishes storing the provider id.
+  // Fall back to the verified external_reference (our Supabase user id) so the first webhook
+  // can bind the remote subscription to the already-claimed local pending subscription.
+  if (!localSub && externalReference) {
+    const { data: fallbackSub } = await admin.from("subscriptions")
+      .select("user_id,plan_code")
+      .eq("user_id", externalReference)
+      .eq("status", "pending")
+      .maybeSingle();
+    if (fallbackSub) {
+      const { error: bindError } = await admin.from("subscriptions").update({
+        provider: "mercado_pago",
+        provider_subscription_id: providerId,
+        updated_at: new Date().toISOString(),
+      }).eq("user_id", fallbackSub.user_id).eq("status", "pending");
+      if (bindError) return false;
+      localSub = fallbackSub;
+    }
+  }
 
   if (!localSub) return false;
 
