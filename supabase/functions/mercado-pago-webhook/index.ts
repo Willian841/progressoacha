@@ -48,10 +48,23 @@ Deno.serve(async (req: Request) => {
       event_type: eventType || "unknown",
       payload: body,
       processed: false,
-    }).select("id").maybeSingle();
+    }).select("id,processed").maybeSingle();
 
-    if (eventError?.code === "23505") return json({ ok: true, duplicate: true });
-    if (eventError || !inserted) return json({ error: "event_store_failed" }, 500);
+    let eventRecord = inserted;
+    if (eventError?.code === "23505") {
+      // A previous attempt may have stored the event but failed during processing.
+      // Reuse that unprocessed event so Mercado Pago retries can actually recover it.
+      const { data: existingEvent, error: existingEventError } = await admin.from("billing_events")
+        .select("id,processed")
+        .eq("provider", "mercado_pago")
+        .eq("event_id", eventId)
+        .maybeSingle();
+      if (existingEventError || !existingEvent) return json({ error: "event_store_failed" }, 500);
+      if (existingEvent.processed) return json({ ok: true, duplicate: true });
+      eventRecord = existingEvent;
+    } else if (eventError || !inserted) {
+      return json({ error: "event_store_failed" }, 500);
+    }
 
     let synced = true;
     if (eventType === "subscription_preapproval") {
@@ -69,7 +82,7 @@ Deno.serve(async (req: Request) => {
     const { error: markProcessedError } = await admin.from("billing_events").update({
       processed: true,
       processed_at: new Date().toISOString(),
-    }).eq("id", inserted.id);
+    }).eq("id", eventRecord.id);
     if (markProcessedError) return json({ error: "event_update_failed" }, 500);
 
     return json({ ok: true });
