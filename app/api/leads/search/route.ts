@@ -4,6 +4,26 @@ import { createServerSupabaseClient } from "@/lib/supabase-server";
 const OVERPASS_URL = "https://overpass-api.de/api/interpreter";
 
 function escapeRegex(value:string) { return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); }
+function inferSegment(query:string) {
+  const q = query.toLowerCase();
+  if (/(restaurante|restaurantes|pizzaria|lanchonete|bar)/.test(q)) return "restaurante";
+  if (/(academia|fitness)/.test(q)) return "academia";
+  if (/(advogado|advocacia)/.test(q)) return "advocacia";
+  if (/dentista/.test(q)) return "dentista";
+  if (/(cl[ií]nica|clinica)/.test(q)) return "clinica";
+  if (/(hotel|hot[eé]is)/.test(q)) return "hotel";
+  if (/(farm[aá]cia|farmacia)/.test(q)) return "farmacia";
+  if (/(sal[aã]o|salao|cabeleireiro)/.test(q)) return "salao";
+  if (/(mercado|supermercado)/.test(q)) return "mercado";
+  if (/(loja|com[eé]rcio|comercio)/.test(q)) return "loja";
+  return "";
+}
+
+function inferCity(query:string) {
+  const match = query.match(/(?:\\bem\\s+|\\bna\\s+|\\bno\\s+|\\bem\\s+)([^,]+?)(?:\\s*,\\s*[A-Za-z]{2})?$/i);
+  return match?.[1]?.trim() || "";
+}
+
 function tagFilter(segment:string) {
   const s = segment.toLowerCase().trim();
   const map:Record<string,string> = {
@@ -27,10 +47,10 @@ const STATE_ISO:Record<string,string> = {
 export async function POST(request:Request) {
   try {
     const body = await request.json();
-    const segment = String(body.segment || "").trim();
-    const city = String(body.city || "").trim();
-    const state = String(body.state || "").trim().toUpperCase();
     const query = String(body.query || "").trim();
+    const segment = String(body.segment || "").trim() || inferSegment(query);
+    const city = String(body.city || "").trim() || inferCity(query);
+    const state = String(body.state || "").trim().toUpperCase();
     if (!city && !query) return NextResponse.json({error:"Informe uma cidade ou termo de busca."},{status:400});
     const supabase = await createServerSupabaseClient();
     const {data:{user}} = await supabase.auth.getUser();
@@ -63,7 +83,11 @@ export async function POST(request:Request) {
       const address=[t["addr:street"],t["addr:housenumber"],t["addr:suburb"]].filter(Boolean).join(", ");
       const phone=t.phone || t["contact:phone"] || ""; const website=t.website || t["contact:website"] || "";
       const category=segment || t.amenity || t.shop || t.office || t.tourism || "Outros";
-      return {user_id:user.id,name:t.name || "Empresa sem nome",segment:category,country:"Brasil",state:state || t["addr:state"] || "",city:city || t["addr:city"] || cityName,area:t["addr:suburb"] || "",address,phone,website,website_status:website ? "found" : "not_found",opportunity_score:website ? 72 : 88,source:"openstreetmap",source_id:String(e.id),latitude:lat,longitude:lon};
+      const hasPhone = Boolean(phone);
+      const hasAddress = Boolean(address);
+      const hasArea = Boolean(t["addr:suburb"]);
+      const score = Math.min(100, 45 + (website ? 0 : 25) + (hasPhone ? 10 : 0) + (hasAddress ? 8 : 0) + (hasArea ? 4 : 0));
+      return {user_id:user.id,name:t.name || "Empresa sem nome",segment:category,country:"Brasil",state:state || t["addr:state"] || "",city:city || t["addr:city"] || cityName,area:t["addr:suburb"] || "",address,phone,website,website_status:website ? "found" : "not_found",opportunity_score:score,source:"openstreetmap",source_id:String(e.id),latitude:lat,longitude:lon};
     }).filter((r:any)=>r.name && r.name !== "Empresa sem nome").slice(0,100);
 
     const {data:usageResult,error:usageError} = await supabase.rpc("consume_search",{p_segment:segment||undefined,p_country:"Brasil",p_state:state||undefined,p_city:city||cityName,p_area:undefined,p_filters:{query,source:"openstreetmap"},p_result_count:rows.length});
