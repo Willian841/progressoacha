@@ -20,6 +20,7 @@ export default function LoginPage() {
       const cleanEmail = email.trim().toLowerCase();
       if (!cleanEmail) throw new Error("Informe seu e-mail para continuar.");
       if (!/^\S+@\S+\.\S+$/.test(cleanEmail)) throw new Error("Informe um e-mail válido.");
+      if (password.length > 128) throw new Error("A senha deve ter no máximo 128 caracteres.");
       if (password.length < 6) throw new Error("A senha precisa ter pelo menos 6 caracteres.");
       const { error } = await createClient().auth.signInWithPassword({ email: cleanEmail, password });
       if (error) {
