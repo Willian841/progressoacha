@@ -14,8 +14,15 @@ function tagFilter(segment:string) {
     loja:'["shop"]', comércio:'["shop"]', comercio:'["shop"]', mercado:'["shop"="supermarket"]',
     farmácia:'["amenity"="pharmacy"]', farmacia:'["amenity"="pharmacy"]', salão:'["shop"="hairdresser"]', salao:'["shop"="hairdresser"]'
   };
-  return map[s] || "";
+  return map[s] || '["name"]';
 }
+
+const STATE_ISO:Record<string,string> = {
+  AC:"BR-AC", AL:"BR-AL", AP:"BR-AP", AM:"BR-AM", BA:"BR-BA", CE:"BR-CE", DF:"BR-DF", ES:"BR-ES",
+  GO:"BR-GO", MA:"BR-MA", MT:"BR-MT", MS:"BR-MS", MG:"BR-MG", PA:"BR-PA", PB:"BR-PB", PR:"BR-PR",
+  PE:"BR-PE", PI:"BR-PI", RJ:"BR-RJ", RN:"BR-RN", RS:"BR-RS", RO:"BR-RO", RR:"BR-RR", SC:"BR-SC",
+  SP:"BR-SP", SE:"BR-SE", TO:"BR-TO"
+};
 
 export async function POST(request:Request) {
   try {
@@ -36,10 +43,17 @@ export async function POST(request:Request) {
     const {data:usage} = await supabase.from("usage_monthly").select("search_count").eq("user_id",user.id).eq("month_start",monthStart.toISOString().slice(0,10)).maybeSingle();
     const used = usage?.search_count || 0;
     if (limit !== null && used >= limit) return NextResponse.json({error:"Limite do plano atingido.",plan_code:plan,used,limit},{status:402});
+
     const cityName = city || query;
     const areaRegex = escapeRegex(cityName);
     const filter = tagFilter(segment);
-    const q = `[out:json][timeout:25]; area["name"~"^${areaRegex}$",i]["boundary"="administrative"]->.searchArea; nwr(area.searchArea)${filter}; out center tags;`;
+    const stateIso = STATE_ISO[state];
+    const stateScope = stateIso ? 'area["ISO3166-2"="' + stateIso + '"]->.stateArea;' : "";
+    const cityScope = stateIso
+      ? 'area["name"~"^' + areaRegex + '$",i]["boundary"="administrative"]["admin_level"~"6|7|8"](area.stateArea)->.searchArea;'
+      : 'area["name"~"^' + areaRegex + '$",i]["boundary"="administrative"]["admin_level"~"6|7|8"]->.searchArea;';
+    const q = "[out:json][timeout:25];" + stateScope + cityScope + "nwr(area.searchArea)" + filter + ";out center tags;";
+
     const response = await fetch(OVERPASS_URL,{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded","User-Agent":"ProgressoAcha/0.1 (lead prospecting app)"},body:new URLSearchParams({data:q}),cache:"no-store"});
     if(!response.ok) return NextResponse.json({error:"A fonte de dados está temporariamente indisponível."},{status:503});
     const json = await response.json();
@@ -51,6 +65,7 @@ export async function POST(request:Request) {
       const category=segment || t.amenity || t.shop || t.office || t.tourism || "Outros";
       return {user_id:user.id,name:t.name || "Empresa sem nome",segment:category,country:"Brasil",state:state || t["addr:state"] || "",city:city || t["addr:city"] || cityName,area:t["addr:suburb"] || "",address,phone,website,website_status:website ? "found" : "not_found",opportunity_score:website ? 72 : 88,source:"openstreetmap",source_id:String(e.id),latitude:lat,longitude:lon};
     }).filter((r:any)=>r.name && r.name !== "Empresa sem nome").slice(0,100);
+
     const {data:usageResult,error:usageError} = await supabase.rpc("consume_search",{p_segment:segment||undefined,p_country:"Brasil",p_state:state||undefined,p_city:city||cityName,p_area:undefined,p_filters:{query,source:"openstreetmap"},p_result_count:rows.length});
     if(usageError || !usageResult?.[0]?.allowed) return NextResponse.json({error:"Limite do plano atingido ou não foi possível registrar o uso."},{status:402});
     if(rows.length) {
