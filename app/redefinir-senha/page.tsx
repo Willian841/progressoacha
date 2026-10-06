@@ -14,6 +14,7 @@ export default function ResetPasswordPage() {
 
   async function submit(e:FormEvent) {
     e.preventDefault(); setError(""); setMessage("");
+    if(password.length < 6){ setError("A senha precisa ter pelo menos 6 caracteres."); return; }
     if(password !== confirm){ setError("As senhas não conferem."); return; }
     setLoading(true);
     try {
