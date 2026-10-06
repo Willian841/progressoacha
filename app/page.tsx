@@ -160,7 +160,9 @@ function Dashboard({userName,leads,pipeline,revenue,onSearch,onPipeline,onAgenda
   const wonCount=Object.values(pipeline).filter(s=>s==="Venda").length;
   const proposalCount=Object.values(pipeline).filter(s=>s==="Proposta").length;
   const conversionRate=Object.keys(pipeline).length?Math.round(wonCount/Object.keys(pipeline).length*100):0;
-  const hour=new Date().getHours();\n  const greeting=hour<12?"Bom dia":hour<18?"Boa tarde":"Boa noite";\n  return <><Header eyebrow="VISÃO GERAL" title={`${greeting}, ${userName} ✦`} text="Transforme oportunidades em conversas e conversas em vendas." action={<button className="primary" onClick={onSearch}><Search size={16}/> Buscar novos leads</button>}/>
+  const hour=new Date().getHours();
+  const greeting=hour<12?"Bom dia":hour<18?"Boa tarde":"Boa noite";
+  return <><Header eyebrow="VISÃO GERAL" title={`${greeting}, ${userName} ✦`} text="Transforme oportunidades em conversas e conversas em vendas." action={<button className="primary" onClick={onSearch}><Search size={16}/> Buscar novos leads</button>}/>
     <div className="stats">
     <Stat icon={Users} label="Leads encontrados" value={leads.length.toLocaleString("pt-BR")} note="Carregados nesta sessão"/>
     <Stat icon={Target} label="Em prospecção" value={Object.keys(pipeline).length.toLocaleString("pt-BR")} note="Com estágio salvo"/>
