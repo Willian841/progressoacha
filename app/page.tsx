@@ -533,14 +533,23 @@ function AdminPage({notify}:{notify:(s:string)=>void}) {
   const [gateway,setGateway]=useState({provider:"none",mode:"test",public_key:"",webhook_url:"",enabled:false});
   const [users,setUsers]=useState<{id:string;email:string|null;full_name:string|null;role:string;plan_code:string;subscription_status:string|null;provider:string|null;current_period_end:string|null;created_at:string}[]>([]);
   const [loading,setLoading]=useState(true);
+  const [loadError,setLoadError]=useState("");
   const [saving,setSaving]=useState("");
   const load=async()=>{
+    setLoading(true);
+    setLoadError("");
     const supabase=createClient() as any;
     const [p,g,u]=await Promise.all([
       supabase.from("plan_settings").select("plan_code,name,price,search_limit,companies_per_search,ai_limit").order("price",{ascending:true}),
       supabase.from("gateway_settings").select("provider,mode,public_key,webhook_url,enabled").eq("id",true).maybeSingle(),
       supabase.rpc("admin_user_overview")
     ]);
+    const firstError=p.error||g.error||u.error;
+    if(firstError){
+      setLoadError(firstError.message||"Não foi possível carregar os dados administrativos.");
+      setLoading(false);
+      return;
+    }
     setPlans((p.data||[]) as typeof plans);
     if(g.data) setGateway(g.data as typeof gateway);
     setUsers((u.data||[]) as typeof users);
@@ -567,6 +576,7 @@ function AdminPage({notify}:{notify:(s:string)=>void}) {
     notify(error?"Não foi possível salvar a configuração da gateway.":"Configuração da gateway salva com sucesso.");
   };
   if(loading) return <div className="coming"><div><LockKeyhole size={23}/></div><h2>Carregando administração</h2><p>Validando configurações do workspace.</p></div>;
+  if(loadError) return <div className="coming"><div><LockKeyhole size={23}/></div><h2>Não foi possível carregar a administração</h2><p>{loadError}</p><button className="primary" onClick={load}>Tentar novamente</button></div>;
   return <><Header eyebrow="ADMINISTRAÇÃO" title="Painel administrativo" text="Controle planos, usuários e a infraestrutura de pagamentos do workspace."/>
     <section className="panel admin-users"><div className="panelhead"><div><h2>Operação de usuários</h2><p>Usuários, planos e assinaturas em uma visão administrativa.</p></div><button className="secondary" onClick={()=>notify("A gestão de usuários está disponível nesta tela.")}><Users size={14}/>Gerenciar</button></div><div className="admin-stat-grid"><div><span>Usuários</span><strong>{users.length}</strong><small>Até 50 mais recentes</small></div><div><span>Assinaturas ativas</span><strong>{users.filter(u=>u.subscription_status==="active").length}</strong><small>Status persistido</small></div><div><span>Plano Infinity</span><strong>{users.filter(u=>u.plan_code==="infinity").length}</strong><small>Inclui administração</small></div></div><div className="admin-user-list">{users.length===0?<p className="settings-note">Nenhum usuário disponível para consulta.</p>:users.map(u=><AdminUserRow key={u.id} user={u} saving={saving} onSave={async(id,plan,status)=>{setSaving(`user:${id}`);const supabase=createClient() as any;const {error}=await supabase.rpc("admin_update_user",{p_user_id:id,p_plan_code:plan,p_status:status});setSaving("");if(error){notify("Não foi possível atualizar o usuário.");return;}notify("Usuário atualizado com sucesso.");await load();}} />)}</div></section><section className="panel admin-banner"><div><span className="eyebrow">ACESSO ADMINISTRATIVO</span><h2>Controle central do Progresso Acha</h2><p>Alterações aqui afetam a configuração comercial dos planos.</p></div><span className="admin-badge">ADMIN</span></section>
     <div className="plans admin-plans">{plans.map(p=><section className="panel admin-plan" key={p.plan_code}><div className="panelhead"><div><h2>{p.name}</h2><p>{p.plan_code}</p></div><span className="admin-badge">{p.plan_code==="free"?"GRÁTIS":"EDITÁVEL"}</span></div><div className="form-grid admin-grid"><label className="field-label">Preço<input inputMode="decimal" value={p.price} onChange={e=>updatePlan(p.plan_code,"price",e.target.value)}/></label><label className="field-label">Buscas<input inputMode="numeric" value={p.search_limit ?? ""} placeholder="∞" onChange={e=>updatePlan(p.plan_code,"search_limit",e.target.value)}/></label><label className="field-label">Empresas / busca<input inputMode="numeric" value={p.companies_per_search} onChange={e=>updatePlan(p.plan_code,"companies_per_search",e.target.value)}/></label><label className="field-label">IA / mês<input inputMode="numeric" value={p.ai_limit ?? ""} placeholder="∞" onChange={e=>updatePlan(p.plan_code,"ai_limit",e.target.value)}/></label></div><button className="primary" disabled={saving===p.plan_code} onClick={()=>savePlan(p)}><Save size={14}/>{saving===p.plan_code?"Salvando...":"Salvar plano"}</button></section>)}</div>
