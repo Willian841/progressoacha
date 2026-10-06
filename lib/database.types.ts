@@ -156,11 +156,11 @@ export type Database = {
           country: string | null
           created_at: string
           id: string
+          latitude: number | null
+          longitude: number | null
           name: string
           opportunity_score: number
           phone: string | null
-          latitude: number | null
-          longitude: number | null
           segment: string | null
           source: string
           state: string | null
@@ -171,19 +171,16 @@ export type Database = {
         }
         Insert: {
           address?: string | null
-          address?: string | null
           area?: string | null
           city?: string | null
           country?: string | null
           created_at?: string
           id?: string
+          latitude?: number | null
+          longitude?: number | null
           name: string
           opportunity_score?: number
           phone?: string | null
-          latitude?: number | null
-          longitude?: number | null
-          latitude?: number | null
-          longitude?: number | null
           segment?: string | null
           source?: string
           state?: string | null
@@ -193,11 +190,14 @@ export type Database = {
           website_status?: string
         }
         Update: {
+          address?: string | null
           area?: string | null
           city?: string | null
           country?: string | null
           created_at?: string
           id?: string
+          latitude?: number | null
+          longitude?: number | null
           name?: string
           opportunity_score?: number
           phone?: string | null
