@@ -42,7 +42,7 @@ export default function LoginPage() {
       <div className="auth-copy"><div className="eyebrow"><span className="pulse"/> ACESSO SEGURO</div><h1>Entre na sua operação.</h1><p>Continue sua prospecção, acompanhe o CRM e transforme oportunidades em vendas.</p></div>
       <form onSubmit={submit} className="auth-form">
         <label>E-mail<input type="email" required value={email} onChange={e=>setEmail(e.target.value)} placeholder="voce@empresa.com"/></label>
-        <label>Senha<div className="password"><input type={show?"text":"password"} required minLength={6} value={password} onChange={e=>setPassword(e.target.value)} placeholder="Sua senha"/><button type="button" onClick={()=>setShow(!show)}>{show?<EyeOff size={16}/>:<Eye size={16}/>}</button></div></label>
+        <label>Senha<div className="password"><input type={show?"text":"password"} required minLength={6} value={password} onChange={e=>setPassword(e.target.value)} maxLength={128} placeholder="Sua senha"/><button type="button" onClick={()=>setShow(!show)}>{show?<EyeOff size={16}/>:<Eye size={16}/>}</button></div></label>
         {error && <div className="auth-error">{error}</div>}
         <button className="primary auth-submit" disabled={loading}>{loading?"Entrando...":"Entrar"} <ArrowRight size={15}/></button>
       </form>
