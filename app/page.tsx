@@ -309,7 +309,8 @@ function Agenda({leads,notify}:{leads:LeadRow[];notify:(s:string)=>void}) {
 
   const load=async()=>{
     const supabase=createClient() as any;
-    const {data}=await supabase.from("activities").select("id,content,scheduled_at,completed_at,type,lead_id").order("scheduled_at",{ascending:true,nullsFirst:false}).limit(50);
+    const {data,error}=await supabase.from("activities").select("id,content,scheduled_at,completed_at,type,lead_id").order("scheduled_at",{ascending:true,nullsFirst:false}).limit(100);
+    if(error){notify("Não foi possível carregar a agenda.");return;}
     setItems(data||[]);
   };
   useEffect(()=>{ load(); },[]);
