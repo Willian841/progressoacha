@@ -68,8 +68,8 @@ export async function POST(request:Request) {
     const stateScope = stateIso ? 'area["ISO3166-2"="' + stateIso + '"]->.stateArea;' : 'area["ISO3166-1"="BR"]->.countryArea;';
     const searchScope = cityName
       ? (stateIso
-        ? 'area["name"~"^' + escapeRegex(cityName) + '$",i]["boundary"="administrative"]["admin_level"~"6|7|8"](area.stateArea)->.searchArea;'
-        : 'area["name"~"^' + escapeRegex(cityName) + '$",i]["boundary"="administrative"]["admin_level"~"6|7|8"](area.countryArea)->.searchArea;')
+        ? 'rel(area.stateArea)["name"~"^' + escapeRegex(cityName) + '$",i]["boundary"="administrative"]["admin_level"~"6|7|8"];map_to_area->.searchArea;'
+        : 'area["name"~"^' + escapeRegex(cityName) + '$",i]["boundary"="administrative"]["admin_level"~"6|7|8"]->.searchArea;')
       : (stateIso ? 'area.stateArea->.searchArea;' : 'area.countryArea->.searchArea;');
     const q = "[out:json][timeout:25];" + stateScope + searchScope + "nwr(area.searchArea)" + filter + ";out center tags;";
 
