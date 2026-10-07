@@ -52,6 +52,10 @@ function inferCity(query:string) {
   return match?.[1]?.trim() || "";
 }
 
+function normalizeText(value:string) {
+  return value.toLowerCase().normalize("NFD").replace(/[\\u0300-\\u036f]/g, "").trim();
+}
+
 function tagFilter(segment:string, searchTerm="") {
   const s = segment.toLowerCase().trim();
   const map:Record<string,string> = {
