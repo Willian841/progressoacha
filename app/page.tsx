@@ -318,13 +318,13 @@ function Leads({leads,setLeads,query,setQuery,notify,searchUsage,setSearchUsage,
       notify("Escolha pelo menos um segmento, estado ou cidade.");
       return;
     }
-    const builtQuery=segmentFilter ? (cityFilter.trim() ? `${segmentFilter} em ${cityFilter.trim()}` : stateFilter ? `${segmentFilter} em ${states.find(([uf])=>uf===stateFilter)?.[1] || stateFilter}` : segmentFilter) : cityFilter.trim();
+    const effectiveCity=areaFilter==="city" ? cityFilter.trim() : ""; const builtQuery=segmentFilter ? (effectiveCity ? `${segmentFilter} em ${effectiveCity}` : stateFilter ? `${segmentFilter} em ${states.find(([uf])=>uf===stateFilter)?.[1] || stateFilter}` : segmentFilter) : effectiveCity;
     try{
       setSearching(true);
       setHasSearched(true);
       setLeads([]);
       setQuery(builtQuery);
-      const response=await fetch("/api/leads/search",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({query:builtQuery,segment:segmentFilter.trim(),city:cityFilter.trim(),state:stateFilter.trim()})});
+      const response=await fetch("/api/leads/search",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({query:builtQuery,segment:segmentFilter.trim(),city:effectiveCity,state:stateFilter.trim()})});
       const payload=await response.json();
       if(!response.ok){notify(payload.error || "Não foi possível realizar a busca.");return;}
       const rows:LeadRow[]=(payload.leads||[]).map((r:any)=>({id:r.id || `osm-${r.source_id}`,name:r.name,segment:r.segment || segmentFilter || "Outros",location:[r.city,r.state].filter(Boolean).join(", "),country:r.country || "Brasil",state:r.state || "",city:r.city || "",area:r.area || "",hasSite:r.website_status === "found",score:Number(r.opportunity_score || 0),phone:r.phone || "",address:r.address || "",latitude:r.latitude ?? null,longitude:r.longitude ?? null}));
@@ -348,7 +348,7 @@ function Leads({leads,setLeads,query,setQuery,notify,searchUsage,setSearchUsage,
             {cityOptions.map(city=><option key={city} value={city}>{city}</option>)}
           </select>
         </label>
-        <label className="field-label">Área<select value={areaFilter} onChange={e=>setAreaFilter(e.target.value)}><option value="city">Cidade inteira</option><option value="region">Região</option></select></label>
+        <label className="field-label">Área<select value={areaFilter} onChange={e=>setAreaFilter(e.target.value)}><option value="city">Cidade inteira</option><option value="region">Estado inteiro</option></select></label>
         <button className="primary" style={{gridColumn:"1 / -1",justifySelf:"start",marginTop:4}} onClick={runSearch} disabled={searching}>{searching?"Buscando...":"Buscar oportunidades"}</button>
       </div>
     </section>
