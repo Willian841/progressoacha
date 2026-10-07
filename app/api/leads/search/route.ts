@@ -80,7 +80,7 @@ export async function POST(request:Request) {
     const segment = (String(body.segment || "").trim() || inferSegment(query)).slice(0,MAX_SEGMENT_LENGTH);
     const inferredState = (String(body.state || "").trim().toUpperCase() || inferState(query)).slice(0,MAX_STATE_LENGTH);
     const inferredCity = String(body.city || "").trim() || inferCity(query);
-    const city = (inferredState && STATE_ISO[inferredState] && Object.entries(STATE_NAMES).some(([name, code]) => code === inferredState && name.toLowerCase() === inferredCity.toLowerCase()) ? "" : inferredCity).slice(0,MAX_CITY_LENGTH);
+    const city = (inferredState && Object.entries(STATE_NAMES).some(([name, code]) => code === inferredState && normalizeText(name) === normalizeText(inferredCity)) ? "" : inferredCity).slice(0,MAX_CITY_LENGTH);
     const state = inferredState;
     if (!city && !query) return NextResponse.json({error:"Informe uma cidade ou termo de busca."},{status:400});
     const supabase = await createServerSupabaseClient();
@@ -106,11 +106,27 @@ export async function POST(request:Request) {
         ? 'rel(area.stateArea)["name"~"^' + escapeRegex(cityName) + '$",i]["boundary"="administrative"]["admin_level"~"6|7|8"];map_to_area->.searchArea;'
         : 'area["name"~"^' + escapeRegex(cityName) + '$",i]["boundary"="administrative"]["admin_level"~"6|7|8"]->.searchArea;')
       : (stateIso ? 'area.stateArea->.searchArea;' : 'area.countryArea->.searchArea;');
-    const q = "[out:json][timeout:25];" + stateScope + searchScope + "nwr(area.searchArea)" + filter + ";out center tags;";
+    const q = "[out:json][timeout:60];" + stateScope + searchScope + "nwr(area.searchArea)" + filter + ";out center tags;";
 
-    const response = await fetch(OVERPASS_URL,{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded","User-Agent":"ProgressoAcha/0.1 (lead prospecting app)"},body:new URLSearchParams({data:q}),cache:"no-store"});
-    if(!response.ok) return NextResponse.json({error:"A fonte de dados está temporariamente indisponível."},{status:503});
-    const json = await response.json();
+    let json:any = null;
+    let lastStatus = 503;
+    for (const endpoint of OVERPASS_URLS) {
+      try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 65000);
+        const response = await fetch(endpoint,{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded","User-Agent":"ProgressoAcha/1.0"},body:new URLSearchParams({data:q}),cache:"no-store",signal:controller.signal});
+        clearTimeout(timeout);
+        lastStatus = response.status;
+        if (response.ok) {
+          json = await response.json();
+          break;
+        }
+        if (![429,503,504].includes(response.status)) break;
+      } catch (e) {
+        console.error("Overpass endpoint failed", endpoint, e);
+      }
+    }
+    if (!json) return NextResponse.json({error:"A fonte de dados está temporariamente indisponível. Tente novamente em alguns segundos."},{status:lastStatus >= 500 ? 503 : 503});
     const elements = Array.isArray(json.elements) ? json.elements : [];
     const rows = elements.map((e:any)=>{
       const t=e.tags||{}; const lat=e.lat ?? e.center?.lat ?? null; const lon=e.lon ?? e.center?.lon ?? null;
