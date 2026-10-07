@@ -272,8 +272,29 @@ function Leads({leads,setLeads,query,setQuery,notify,searchUsage,setSearchUsage,
   const [segmentFilter,setSegmentFilter]=useState("");
   const [stateFilter,setStateFilter]=useState("");
   const [cityFilter,setCityFilter]=useState("");
+  const [cityOptions,setCityOptions]=useState<string[]>([]);
+  const [citiesLoading,setCitiesLoading]=useState(false);
   const [areaFilter,setAreaFilter]=useState("city");
   const [searching,setSearching]=useState(false);
+
+  useEffect(()=>{
+    if(!stateFilter){
+      setCityOptions([]);
+      return;
+    }
+    let cancelled=false;
+    setCitiesLoading(true);
+    setCityFilter("");
+    fetch(`https://servicodados.ibge.gov.br/api/v1/localidades/estados/${stateFilter}/municipios`)
+      .then(res=>res.ok?res.json():[])
+      .then((rows:any[])=>{
+        if(cancelled) return;
+        setCityOptions((rows||[]).map(r=>r.nome).filter(Boolean).sort((a,b)=>a.localeCompare(b,"pt-BR")));
+      })
+      .catch(()=>{if(!cancelled)setCityOptions([]);})
+      .finally(()=>{if(!cancelled)setCitiesLoading(false);});
+    return ()=>{cancelled=true;};
+  },[stateFilter]);
 
   const segments=["Restaurantes","Dentistas","Advogados","Academias","Farmácias","Hotéis","Clínicas","Salões de beleza","Imobiliárias","Oficinas","Lojas","Outros"];
   const states=[["AC","Acre"],["AL","Alagoas"],["AP","Amapá"],["AM","Amazonas"],["BA","Bahia"],["CE","Ceará"],["DF","Distrito Federal"],["ES","Espírito Santo"],["GO","Goiás"],["MA","Maranhão"],["MT","Mato Grosso"],["MS","Mato Grosso do Sul"],["MG","Minas Gerais"],["PA","Pará"],["PB","Paraíba"],["PR","Paraná"],["PE","Pernambuco"],["PI","Piauí"],["RJ","Rio de Janeiro"],["RN","Rio Grande do Norte"],["RS","Rio Grande do Sul"],["RO","Rondônia"],["RR","Roraima"],["SC","Santa Catarina"],["SP","São Paulo"],["SE","Sergipe"],["TO","Tocantins"]];
@@ -313,7 +334,12 @@ function Leads({leads,setLeads,query,setQuery,notify,searchUsage,setSearchUsage,
       <div style={{display:"grid",gridTemplateColumns:"1.15fr 1fr 1fr .9fr auto",gap:12,alignItems:"end",marginTop:18}}>
         <label className="field-label">Segmento<select value={segmentFilter} onChange={e=>setSegmentFilter(e.target.value)}><option value="">Todos os segmentos</option>{segments.map(s=><option key={s} value={s}>{s}</option>)}</select></label>
         <label className="field-label">Estado / Região<select value={stateFilter} onChange={e=>setStateFilter(e.target.value)}><option value="">Todos os estados</option>{states.map(([uf,name])=><option key={uf} value={uf}>{name} ({uf})</option>)}</select></label>
-        <label className="field-label">Cidade <input value={cityFilter} onChange={e=>setCityFilter(e.target.value)} placeholder="Ex.: São Paulo"/></label>
+        <label className="field-label">Cidade
+          <select value={cityFilter} onChange={e=>setCityFilter(e.target.value)} disabled={!stateFilter || citiesLoading}>
+            <option value="">{!stateFilter ? "Selecione o estado primeiro" : citiesLoading ? "Carregando cidades..." : "Selecione a cidade"}</option>
+            {cityOptions.map(city=><option key={city} value={city}>{city}</option>)}
+          </select>
+        </label>
         <label className="field-label">Área<select value={areaFilter} onChange={e=>setAreaFilter(e.target.value)}><option value="city">Cidade inteira</option><option value="region">Região</option></select></label>
         <button className="primary" onClick={runSearch} disabled={searching}>{searching?"Buscando...":"Buscar oportunidades"}</button>
       </div>
