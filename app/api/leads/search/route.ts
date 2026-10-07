@@ -41,6 +41,8 @@ function inferSegment(query:string) {
 
 function inferState(query:string) {
   const normalized = query.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  const ufMatch = normalized.match(/(?:,|\\b)(ac|al|ap|am|ba|ce|df|es|go|ma|mt|ms|mg|pa|pb|pr|pe|pi|rj|rn|rs|ro|rr|sc|sp|se|to)\\s*$/i);
+  if (ufMatch) return ufMatch[1].toUpperCase();
   for (const [name, code] of Object.entries(STATE_NAMES)) {
     const n = name.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
     if (new RegExp("(?:\\bem|\\bna|\\bno|\\bdo|\\bda|\\bde)\\s+" + escapeRegex(n) + "\\b", "i").test(normalized)) return code;
@@ -160,9 +162,11 @@ export async function POST(request:Request) {
     const filter = tagFilter(segment, searchTerm);
     const stateIso = STATE_ISO[state];
     const stateName = Object.entries(STATE_NAMES).find(([,code]) => code === state)?.[0] || "";
-    const stateScope = stateIso
-      ? 'area["ISO3166-2"="' + stateIso + '"]["boundary"="administrative"]["admin_level"="4"]->.stateArea;'
-      : 'area["ISO3166-1"="BR"]->.countryArea;';
+    const stateScope = cityBbox
+      ? ""
+      : stateIso
+        ? 'area["ISO3166-2"="' + stateIso + '"]["boundary"="administrative"]["admin_level"="4"]->.stateArea;'
+        : 'area["ISO3166-1"="BR"]->.countryArea;';
     const searchScope = cityBbox
       ? ""
       : cityName
