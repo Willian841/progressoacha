@@ -53,7 +53,7 @@ function inferCity(query:string) {
 }
 
 function normalizeText(value:string) {
-  return value.toLowerCase().normalize("NFD").replace(/[\\u0300-\\u036f]/g, "").trim();
+  return value.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
 }
 
 function tagFilter(segment:string, searchTerm="") {
@@ -104,11 +104,12 @@ export async function POST(request:Request) {
     const searchTerm = genericTerms.has(inferredTerm.toLowerCase()) ? "" : inferredTerm;
     const filter = tagFilter(segment, searchTerm);
     const stateIso = STATE_ISO[state];
-    const stateScope = stateIso ? 'area["ISO3166-2"="' + stateIso + '"]->.stateArea;' : 'area["ISO3166-1"="BR"]->.countryArea;';
+    const stateName = Object.entries(STATE_NAMES).find(([,code]) => code === state)?.[0] || "";
+    const stateScope = stateIso
+      ? 'area["name"~"^' + escapeRegex(stateName) + '$",i]["boundary"="administrative"]["admin_level"="4"]->.stateArea;'
+      : 'area["ISO3166-1"="BR"]->.countryArea;';
     const searchScope = cityName
-      ? (stateIso
-        ? 'rel(area.stateArea)["name"~"^' + escapeRegex(cityName) + '$",i]["boundary"="administrative"]["admin_level"~"6|7|8"];map_to_area->.searchArea;'
-        : 'area["name"~"^' + escapeRegex(cityName) + '$",i]["boundary"="administrative"]["admin_level"~"6|7|8"]->.searchArea;')
+      ? 'area["name"~"^' + escapeRegex(cityName) + '$",i]["boundary"="administrative"]["admin_level"~"6|7|8"]->.searchArea;'
       : (stateIso ? 'area.stateArea->.searchArea;' : 'area.countryArea->.searchArea;');
     const q = "[out:json][timeout:60];" + stateScope + searchScope + "nwr(area.searchArea)" + filter + ";out center tags;";
 
