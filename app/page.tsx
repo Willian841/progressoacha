@@ -276,6 +276,7 @@ function Leads({leads,setLeads,query,setQuery,notify,searchUsage,setSearchUsage,
   const [citiesLoading,setCitiesLoading]=useState(false);
   const [areaFilter,setAreaFilter]=useState("city");
   const [searching,setSearching]=useState(false);
+  const [hasSearched,setHasSearched]=useState(false);
 
   useEffect(()=>{
     if(!stateFilter){
@@ -319,6 +320,7 @@ function Leads({leads,setLeads,query,setQuery,notify,searchUsage,setSearchUsage,
     const builtQuery=segmentFilter ? (cityFilter.trim() ? `${segmentFilter} em ${cityFilter.trim()}` : stateFilter ? `${segmentFilter} em ${states.find(([uf])=>uf===stateFilter)?.[1] || stateFilter}` : segmentFilter) : cityFilter.trim();
     try{
       setSearching(true);
+      setHasSearched(true);
       setLeads([]);
       setQuery(builtQuery);
       const response=await fetch("/api/leads/search",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({query:builtQuery,segment:segmentFilter.trim(),city:cityFilter.trim(),state:stateFilter.trim()})});
@@ -350,7 +352,16 @@ function Leads({leads,setLeads,query,setQuery,notify,searchUsage,setSearchUsage,
       </div>
     </section>
     <div className="metrics"><div><b>{filtered.length}</b><span>Empresas encontradas</span></div><div><b className="green">{filtered.filter(l=>!l.hasSite).length}</b><span>Sem site</span></div><div><b>{filtered.filter(l=>l.hasSite).length}</b><span>Com site</span></div><div><b className="cyan">{filtered.filter(l=>l.score>=80).length}</b><span>Oportunidades altas</span></div></div>
-    {leads.length>0 && <><LeadMap leads={filtered} notify={notify}/><section className="panel"><div className="panelhead"><div><h2>Resultados da busca</h2><p>{filtered.length} empresas nesta visualização</p></div><div className="panelhead-meta"><span className="muted">Base inteligente · {planCode}</span><small className="muted">Dados de OpenStreetMap · © contribuidores OSM</small></div></div>{filtered.map(l=><div className="lead" key={l.id}><button className="icon-action" onClick={async()=>{const supabase=createClient() as any;const {data:userData}=await supabase.auth.getUser();if(!userData.user)return;const {error}=await supabase.from("pipeline_items").upsert({user_id:userData.user.id,lead_id:l.id,stage:"selected"},{onConflict:"user_id,lead_id"});if(error){notify("Não foi possível adicionar ao CRM.");return;}setPipeline(prev=>({...prev,[l.id]:"Selecionado"}));notify("Lead adicionado à prospecção.");}} aria-label={`Adicionar ${l.name} ao CRM`}><Target size={15}/></button><div className="company small">{l.name[0]}</div><div className="leadinfo"><b>{l.name}</b><span>{l.segment} · {l.location}</span></div><div className="site">{l.hasSite?<><i className="dot ok"/>Site encontrado</>:<><i className="dot warn"/>Site não identificado</>}</div><strong className="potential">{l.score}</strong>{l.phone ? <a className="icon-action" href={whatsappUrl(l.phone,commercialMessage(l.name))} target="_blank" rel="noopener noreferrer" aria-label={`Abrir WhatsApp para ${l.name}`}><MessageCircle size={15}/></a> : <button className="icon-action" disabled aria-label={`WhatsApp indisponível para ${l.name}`}><MessageCircle size={15}/></button>}</div>)}</section></>}
+    {hasSearched && !searching && leads.length===0 && <section className="panel" style={{marginTop:18,padding:"44px 28px",textAlign:"center"}}>
+      <div className="company" style={{width:52,height:52,margin:"0 auto 14px"}}><Search size={21}/></div>
+      <h2 style={{marginBottom:8}}>Nenhum estabelecimento encontrado</h2>
+      <p className="muted" style={{maxWidth:640,margin:"0 auto"}}>A busca foi executada para a cidade selecionada. O Progresso Acha não mistura resultados de Salvador ou de outra cidade.</p>
+    </section>}
+    {!hasSearched && <section className="panel" style={{marginTop:18,padding:"34px 28px"}}>
+      <div className="panelhead"><div><h2>Seu espaço de prospecção</h2><p>Escolha segmento, estado e cidade para carregar estabelecimentos reais da região escolhida.</p></div><div className="company" style={{width:44,height:44}}><Target size={19}/></div></div>
+      <div className="stats" style={{marginTop:18}}><div><b>01</b><span>Escolha o segmento</span></div><div><b>02</b><span>Selecione o estado</span></div><div><b>03</b><span>Veja os estabelecimentos</span></div></div>
+    </section>}
+    {hasSearched && leads.length>0 && <><LeadMap leads={filtered} notify={notify}/><section className="panel"><div className="panelhead"><div><h2>Resultados da busca</h2><p>{filtered.length} empresas nesta visualização</p></div><div className="panelhead-meta"><span className="muted">Base inteligente · {planCode}</span><small className="muted">Dados de OpenStreetMap · © contribuidores OSM</small></div></div>{filtered.map(l=><div className="lead" key={l.id}><button className="icon-action" onClick={async()=>{const supabase=createClient() as any;const {data:userData}=await supabase.auth.getUser();if(!userData.user)return;const {error}=await supabase.from("pipeline_items").upsert({user_id:userData.user.id,lead_id:l.id,stage:"selected"},{onConflict:"user_id,lead_id"});if(error){notify("Não foi possível adicionar ao CRM.");return;}setPipeline(prev=>({...prev,[l.id]:"Selecionado"}));notify("Lead adicionado à prospecção.");}} aria-label={`Adicionar ${l.name} ao CRM`}><Target size={15}/></button><div className="company small">{l.name[0]}</div><div className="leadinfo"><b>{l.name}</b><span>{l.segment} · {l.location}</span></div><div className="site">{l.hasSite?<><i className="dot ok"/>Site encontrado</>:<><i className="dot warn"/>Site não identificado</>}</div><strong className="potential">{l.score}</strong>{l.phone ? <a className="icon-action" href={whatsappUrl(l.phone,commercialMessage(l.name))} target="_blank" rel="noopener noreferrer" aria-label={`Abrir WhatsApp para ${l.name}`}><MessageCircle size={15}/></a> : <button className="icon-action" disabled aria-label={`WhatsApp indisponível para ${l.name}`}><MessageCircle size={15}/></button>}</div>)}</section></>}
   </>;
 }
 function LeadMap({leads,notify}:{leads:LeadRow[];notify:(s:string)=>void}) {
