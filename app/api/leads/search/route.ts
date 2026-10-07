@@ -169,7 +169,16 @@ export async function POST(request:Request) {
         console.error("Nominatim city lookup failed", error);
       }
     }
-    const inferredTerm = !segment ? (query.match(/^(.*?)\s+(?:em|na|no)\s+/i)?.[1]?.trim() || (cityName ? query : "")) : "";
+    // Busca por cidade é fail-closed: sem uma cidade validada pelo Nominatim,
+    // nunca fazemos fallback para o estado/país, pois isso pode misturar municípios.
+    if (cityName && !cityBbox) {
+      return NextResponse.json(
+        {error:"Não foi possível validar a cidade informada. A busca foi bloqueada para evitar resultados de outra cidade."},
+        {status:422}
+      );
+    }
+
+    const inferredTerm = !segment ? (query.match(/^(.*?)\s+(?:em|na|no|de)\s+/i)?.[1]?.trim() || (cityName ? query : "")) : "";
     const genericTerms = new Set(["empresa","empresas","negócio","negocios","negócios","comércio","comercio","lojas"]);
     const searchTerm = genericTerms.has(inferredTerm.toLowerCase()) ? "" : inferredTerm;
     const filter = tagFilter(segment, searchTerm);
@@ -224,9 +233,15 @@ export async function POST(request:Request) {
       return {user_id:user.id,name:t.name || "Empresa sem nome",segment:category,country:"Brasil",state:t["addr:state"] || state || "",city:t["addr:city"] || city || "",area:t["addr:suburb"] || "",address,phone,website,website_status:website ? "found" : "not_found",opportunity_score:score,source:"openstreetmap",source_id:String(e.id),latitude:lat,longitude:lon};
     }).filter((r:any)=>{
       if (!r.name || r.name === "Empresa sem nome") return false;
-      if (city && r.latitude != null && r.longitude != null && cityBbox) {
+      // Em consultas por cidade, coordenadas são obrigatórias e precisam estar
+      // dentro do bbox da cidade validada. Sem isso, o lead é descartado.
+      if (city && cityBbox) {
+        if (r.latitude == null || r.longitude == null) return false;
         const [south, west, north, east] = cityBbox.split(",").map(Number);
-        return r.latitude >= south && r.latitude <= north && r.longitude >= west && r.longitude <= east;
+        if (!(r.latitude >= south && r.latitude <= north && r.longitude >= west && r.longitude <= east)) return false;
+        const expectedCity = normalizeText(city);
+        const returnedCity = normalizeText(r.city);
+        if (returnedCity && !returnedCity.includes(expectedCity) && !expectedCity.includes(returnedCity)) return false;
       }
       return true;
     }).slice(0,companiesPerSearch);
