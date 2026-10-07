@@ -338,7 +338,7 @@ function Leads({leads,setLeads,query,setQuery,notify,searchUsage,setSearchUsage,
       setLeads(rows.sort((a,b)=>b.score-a.score));
       const usage=payload.usage;
       if(usage) setSearchUsage({used:usage.used,limit:usage.usage_limit});
-      notify(`Busca concluída: ${rows.length} empresas encontradas.`);
+      try { const {data:referralBonus}=await createClient().rpc("claim_referral_search_reward"); if(Number(referralBonus)>0) notify("Busca concluída. Você ganhou +10 buscas por indicação!"); else notify(`Busca concluída: ${rows.length} empresas encontradas.`); } catch { notify(`Busca concluída: ${rows.length} empresas encontradas.`); }
     }catch(error){console.error(error);notify("Não foi possível realizar a busca agora.");}
     finally{setSearching(false);}
   };
