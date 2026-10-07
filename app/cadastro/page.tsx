@@ -26,7 +26,7 @@ export default function SignupPage() {
       const { error } = await createClient().auth.signUp({
         email:cleanEmail, password,
         options:{
-          data:{ full_name:cleanName },
+          data:{ full_name:cleanName, referral_code: new URLSearchParams(window.location.search).get("ref")?.trim().toUpperCase() || null },
           emailRedirectTo: redirectTo,
         }
       });
