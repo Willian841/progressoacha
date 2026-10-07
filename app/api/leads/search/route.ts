@@ -138,7 +138,7 @@ export async function POST(request:Request) {
           const geo = await geoResponse.json();
           const box = geo?.[0]?.boundingbox;
           if (Array.isArray(box) && box.length === 4) {
-            cityBbox = box.join(",");
+            cityBbox = [box[0], box[2], box[1], box[3]].join(",");
           }
         }
       } catch (error) {
