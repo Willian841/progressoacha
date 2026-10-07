@@ -1,12 +1,27 @@
 import { NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
 
-const OVERPASS_URLS = [\n  "https://overpass-api.de/api/interpreter",\n  "https://overpass.kumi.systems/api/interpreter"\n];
+const OVERPASS_URLS = [
+  "https://overpass-api.de/api/interpreter",
+  "https://overpass.kumi.systems/api/interpreter"
+];
 const MAX_QUERY_LENGTH = 120;
 const MAX_SEGMENT_LENGTH = 60;
 const MAX_CITY_LENGTH = 80;
-const MAX_STATE_LENGTH = 2;\n\nconst STATE_NAMES:Record<string,string> = {\n  acre:"AC", alagoas:"AL", amapá:"AP", amapa:"AP", amazonas:"AM", bahia:"BA", ceará:"CE", ceara:"CE", "distrito federal":"DF", espírito santo:"ES", "espirito santo":"ES", goiás:"GO", goias:"GO", maranhão:"MA", maranhao:"MA", "mato grosso":"MT", "mato grosso do sul":"MS", "minas gerais":"MG", pará:"PA", para:"PA", paraíba:"PB", paraiba:"PB", paraná:"PR", parana:"PR", pernambuco:"PE", piauí:"PI", piaui:"PI", "rio de janeiro":"RJ", "rio grande do norte":"RN", "rio grande do sul":"RS", rondônia:"RO", rondonia:"RO", roraima:"RR", "santa catarina":"SC", "são paulo":"SP", "sao paulo":"SP", sergipe:"SE", tocantins:"TO"\n};
+const MAX_STATE_LENGTH = 2;
 
+const STATE_NAMES: Record<string, string> = {
+  acre:"AC", alagoas:"AL", amapá:"AP", amapa:"AP", amazonas:"AM", bahia:"BA",
+  ceará:"CE", ceara:"CE", "distrito federal":"DF", "espírito santo":"ES", "espirito santo":"ES",
+  goiás:"GO", goias:"GO", maranhão:"MA", maranhao:"MA", "mato grosso":"MT",
+  "mato grosso do sul":"MS", "minas gerais":"MG", pará:"PA", para:"PA", paraíba:"PB",
+  paraiba:"PB", paraná:"PR", parana:"PR", pernambuco:"PE", piauí:"PI", piaui:"PI",
+  "rio de janeiro":"RJ", "rio grande do norte":"RN", "rio grande do sul":"RS",
+  rondônia:"RO", rondonia:"RO", roraima:"RR", "santa catarina":"SC",
+  "são paulo":"SP", "sao paulo":"SP", sergipe:"SE", tocantins:"TO"
+};
+
+function escapeRegex(value:string) { return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); }
 function escapeRegex(value:string) { return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); }
 function inferSegment(query:string) {
   const q = query.toLowerCase();
@@ -25,7 +40,15 @@ function inferSegment(query:string) {
   return "";
 }
 
-function inferState(query:string) {\n  const q = query.toLowerCase().normalize("NFD").replace(/[\\u0300-\\u036f]/g, "");\n  for (const [name, code] of Object.entries(STATE_NAMES)) {\n    if (new RegExp(`(?:\\\\bem|\\\\bna|\\\\bno|\\\\bdo|\\\\bda|\\\\bde)\\\\s+${escapeRegex(name.normalize("NFD").replace(/[\\u0300-\\u036f]/g, ""))}\\\\b`, "i").test(q)) return code;\n  }\n  return "";\n}\n\nfunction inferCity(query:string) {
+function inferState(query:string) {
+  const normalized = query.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  for (const [name, code] of Object.entries(STATE_NAMES)) {
+    const n = name.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    if (new RegExp("(?:\\bem|\\bna|\\bno|\\bdo|\\bda|\\bde)\\s+" + escapeRegex(n) + "\\b", "i").test(normalized)) return code;
+  }
+  return "";
+}
+function inferCity(query:string) {
   const match = query.match(/(?:\bem\s+|\bna\s+|\bno\s+)([^,]+?)(?:\s*,\s*[A-Za-z]{2})?$/i);
   return match?.[1]?.trim() || "";
 }
