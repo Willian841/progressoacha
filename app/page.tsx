@@ -268,7 +268,7 @@ function Dashboard({userName,leads,pipeline,revenue,onSearch,onPipeline,onAgenda
 
 function Stat({icon:Icon,label,value,note}:{icon:any,label:string,value:string,note:string}){return <div className="stat"><div className="stat-icon"><Icon size={18}/></div><div><span>{label}</span><b>{value}</b><small>{note}</small></div></div>}
 
-function Leads({leads,setLeads,query,setQuery,notify,searchUsage,setSearchUsage,planCode,setPipeline}:{leads:LeadRow[],setLeads:React.Dispatch<React.SetStateAction<LeadRow[]>>,query:string,setQuery:(v:string)=>void,notify:(s:string)=>void,searchUsage:{used:number;limit:number|null},setSearchUsage:React.Dispatch<React.SetStateAction<{used:number;limit:number|null}>>,planCode:string,setPipeline:React.Dispatch<React.SetStateAction<Record<string,string>>>) {
+function Leads({leads,setLeads,query,setQuery,notify,searchUsage,setSearchUsage,planCode,setPipeline}:{leads:LeadRow[],setLeads:React.Dispatch<React.SetStateAction<LeadRow[]>>,query:string,setQuery:(v:string)=>void,notify:(s:string)=>void,searchUsage:{used:number;limit:number|null},setSearchUsage:React.Dispatch<React.SetStateAction<{used:number;limit:number|null}>>,planCode:string,setPipeline:React.Dispatch<React.SetStateAction<Record<string,string>>>}) {
   const [segmentFilter,setSegmentFilter]=useState("");
   const [stateFilter,setStateFilter]=useState("");
   const [cityFilter,setCityFilter]=useState("");
