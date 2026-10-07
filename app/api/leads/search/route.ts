@@ -132,9 +132,12 @@ export async function POST(request:Request) {
     if (cityName) {
       try {
         const geoParams = new URLSearchParams({
-          q: [cityName, stateNameForCode(state), "Brasil"].filter(Boolean).join(", "),
+          city: cityName,
+          state: stateNameForCode(state),
+          country: "Brasil",
           format: "jsonv2",
-          limit: "1",
+          addressdetails: "1",
+          limit: "5",
           countrycodes: "br"
         });
         const geoResponse = await fetch(
@@ -147,7 +150,17 @@ export async function POST(request:Request) {
         );
         if (geoResponse.ok) {
           const geo = await geoResponse.json();
-          const box = geo?.[0]?.boundingbox;
+          const cityKey = normalizeText(cityName);
+          const expectedState = normalizeText(stateNameForCode(state));
+          const match = Array.isArray(geo) ? geo.find((item:any) => {
+            const address = item?.address || {};
+            const resolvedCity = normalizeText(address.city || address.town || address.municipality || item?.name || "");
+            const resolvedState = normalizeText(address.state || "");
+            const cityMatches = resolvedCity === cityKey || resolvedCity.includes(cityKey) || cityKey.includes(resolvedCity);
+            const stateMatches = !expectedState || resolvedState === expectedState || resolvedState.includes(expectedState) || expectedState.includes(resolvedState);
+            return cityMatches && stateMatches;
+          }) : null;
+          const box = match?.boundingbox;
           if (Array.isArray(box) && box.length === 4) {
             cityBbox = [box[0], box[2], box[1], box[3]].join(",");
           }
@@ -208,8 +221,15 @@ export async function POST(request:Request) {
       const hasAddress = Boolean(address);
       const hasArea = Boolean(t["addr:suburb"]);
       const score = Math.min(100, 45 + (website ? 0 : 25) + (hasPhone ? 10 : 0) + (hasAddress ? 8 : 0) + (hasArea ? 4 : 0));
-      return {user_id:user.id,name:t.name || "Empresa sem nome",segment:category,country:"Brasil",state:state || t["addr:state"] || "",city:city || t["addr:city"] || "",area:t["addr:suburb"] || "",address,phone,website,website_status:website ? "found" : "not_found",opportunity_score:score,source:"openstreetmap",source_id:String(e.id),latitude:lat,longitude:lon};
-    }).filter((r:any)=>r.name && r.name !== "Empresa sem nome").slice(0,companiesPerSearch);
+      return {user_id:user.id,name:t.name || "Empresa sem nome",segment:category,country:"Brasil",state:t["addr:state"] || state || "",city:t["addr:city"] || city || "",area:t["addr:suburb"] || "",address,phone,website,website_status:website ? "found" : "not_found",opportunity_score:score,source:"openstreetmap",source_id:String(e.id),latitude:lat,longitude:lon};
+    }).filter((r:any)=>{
+      if (!r.name || r.name === "Empresa sem nome") return false;
+      if (city && r.latitude != null && r.longitude != null && cityBbox) {
+        const [south, west, north, east] = cityBbox.split(",").map(Number);
+        return r.latitude >= south && r.latitude <= north && r.longitude >= west && r.longitude <= east;
+      }
+      return true;
+    }).slice(0,companiesPerSearch);
 
     const {data:usageResult,error:usageError} = await supabase.rpc("consume_search",{p_segment:segment||undefined,p_country:"Brasil",p_state:state||undefined,p_city:city||cityName,p_area:undefined,p_filters:{query,source:"openstreetmap"},p_result_count:rows.length});
     if(usageError) {
