@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
 
-const OVERPASS_URL = "https://overpass-api.de/api/interpreter";
+const OVERPASS_URLS = [\n  "https://overpass-api.de/api/interpreter",\n  "https://overpass.kumi.systems/api/interpreter"\n];
 const MAX_QUERY_LENGTH = 120;
 const MAX_SEGMENT_LENGTH = 60;
 const MAX_CITY_LENGTH = 80;
-const MAX_STATE_LENGTH = 2;
+const MAX_STATE_LENGTH = 2;\n\nconst STATE_NAMES:Record<string,string> = {\n  acre:"AC", alagoas:"AL", amapá:"AP", amapa:"AP", amazonas:"AM", bahia:"BA", ceará:"CE", ceara:"CE", "distrito federal":"DF", espírito santo:"ES", "espirito santo":"ES", goiás:"GO", goias:"GO", maranhão:"MA", maranhao:"MA", "mato grosso":"MT", "mato grosso do sul":"MS", "minas gerais":"MG", pará:"PA", para:"PA", paraíba:"PB", paraiba:"PB", paraná:"PR", parana:"PR", pernambuco:"PE", piauí:"PI", piaui:"PI", "rio de janeiro":"RJ", "rio grande do norte":"RN", "rio grande do sul":"RS", rondônia:"RO", rondonia:"RO", roraima:"RR", "santa catarina":"SC", "são paulo":"SP", "sao paulo":"SP", sergipe:"SE", tocantins:"TO"\n};
 
 function escapeRegex(value:string) { return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); }
 function inferSegment(query:string) {
@@ -25,7 +25,7 @@ function inferSegment(query:string) {
   return "";
 }
 
-function inferCity(query:string) {
+function inferState(query:string) {\n  const q = query.toLowerCase().normalize("NFD").replace(/[\\u0300-\\u036f]/g, "");\n  for (const [name, code] of Object.entries(STATE_NAMES)) {\n    if (new RegExp(`(?:\\\\bem|\\\\bna|\\\\bno|\\\\bdo|\\\\bda|\\\\bde)\\\\s+${escapeRegex(name.normalize("NFD").replace(/[\\u0300-\\u036f]/g, ""))}\\\\b`, "i").test(q)) return code;\n  }\n  return "";\n}\n\nfunction inferCity(query:string) {
   const match = query.match(/(?:\bem\s+|\bna\s+|\bno\s+)([^,]+?)(?:\s*,\s*[A-Za-z]{2})?$/i);
   return match?.[1]?.trim() || "";
 }
@@ -57,7 +57,7 @@ export async function POST(request:Request) {
     const query = String(body.query || "").trim().slice(0,MAX_QUERY_LENGTH);
     const segment = (String(body.segment || "").trim() || inferSegment(query)).slice(0,MAX_SEGMENT_LENGTH);
     const city = (String(body.city || "").trim() || inferCity(query)).slice(0,MAX_CITY_LENGTH);
-    const state = String(body.state || "").trim().toUpperCase().slice(0,MAX_STATE_LENGTH);
+    const state = (String(body.state || "").trim().toUpperCase() || inferState(query)).slice(0,MAX_STATE_LENGTH);
     if (!city && !query) return NextResponse.json({error:"Informe uma cidade ou termo de busca."},{status:400});
     const supabase = await createServerSupabaseClient();
     const {data:{user}} = await supabase.auth.getUser();
