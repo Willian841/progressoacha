@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { createClient } from "../lib/supabase-browser";
 import {
-  ArrowUpRight, BarChart3, CalendarDays, Check, ChevronRight, CircleDollarSign,
+  ArrowUpRight, BarChart3, CalendarDays, Check, ChevronRight, CircleDollarSign, CreditCard,
   Globe2, LayoutDashboard, Menu, MessageCircle, Search, Settings, Sparkles,
   Target, TrendingUp, Users, X, Zap, LogOut, Save, LockKeyhole
 } from "lucide-react";
