@@ -52,6 +52,11 @@ function inferCity(query:string) {
   return match?.[1]?.trim() || "";
 }
 
+function stateNameForCode(code:string) {
+  const entry = Object.entries(STATE_NAMES).find(([, value]) => value === code);
+  return entry?.[0] || "";
+}
+
 function normalizeText(value:string) {
   return value.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
 }
@@ -108,6 +113,38 @@ export async function POST(request:Request) {
     }
 
     const cityName = city;
+
+    // Para buscas por cidade, resolve primeiro a cidade para um bounding box
+    // via Nominatim. Isso evita depender da combinação de relações/áreas
+    // administrativas do Overpass, que varia entre municípios.
+    let cityBbox: string | null = null;
+    if (cityName) {
+      try {
+        const geoParams = new URLSearchParams({
+          q: [cityName, stateNameForCode(state), "Brasil"].filter(Boolean).join(", "),
+          format: "jsonv2",
+          limit: "1",
+          countrycodes: "br"
+        });
+        const geoResponse = await fetch(
+          "https://nominatim.openstreetmap.org/search?" + geoParams.toString(),
+          {
+            headers: { "User-Agent": "ProgressoAcha/1.0 (lead-search)" },
+            cache: "no-store",
+            signal: AbortSignal.timeout(6000)
+          }
+        );
+        if (geoResponse.ok) {
+          const geo = await geoResponse.json();
+          const box = geo?.[0]?.boundingbox;
+          if (Array.isArray(box) && box.length === 4) {
+            cityBbox = box.join(",");
+          }
+        }
+      } catch (error) {
+        console.error("Nominatim city lookup failed", error);
+      }
+    }
     const inferredTerm = !segment ? (query.match(/^(.*?)\s+(?:em|na|no)\s+/i)?.[1]?.trim() || (cityName ? query : "")) : "";
     const genericTerms = new Set(["empresa","empresas","negócio","negocios","negócios","comércio","comercio","lojas"]);
     const searchTerm = genericTerms.has(inferredTerm.toLowerCase()) ? "" : inferredTerm;
@@ -117,12 +154,17 @@ export async function POST(request:Request) {
     const stateScope = stateIso
       ? 'area["ISO3166-2"="' + stateIso + '"]["boundary"="administrative"]["admin_level"="4"]->.stateArea;'
       : 'area["ISO3166-1"="BR"]->.countryArea;';
-    const searchScope = cityName
-      ? (stateIso
-          ? 'rel(area.stateArea)["boundary"="administrative"]["admin_level"~"6|7|8"]["name"~"^' + escapeRegex(cityName) + '$",i]->.cityRel;.cityRel map_to_area -> .searchArea;'
-          : 'area["name"~"^' + escapeRegex(cityName) + '$",i]["boundary"="administrative"]["admin_level"~"6|7|8"]->.searchArea;')
-      : (stateIso ? 'area.stateArea->.searchArea;' : 'area.countryArea->.searchArea;');
-    const q = "[out:json][timeout:20];" + stateScope + searchScope + "nwr(area.searchArea)" + filter + ";out center tags;";
+    const searchScope = cityBbox
+      ? ""
+      : cityName
+        ? (stateIso
+            ? 'rel(area.stateArea)["boundary"="administrative"]["admin_level"~"6|7|8"]["name"~"^' + escapeRegex(cityName) + '$",i]->.cityRel;.cityRel map_to_area -> .searchArea;'
+            : 'area["name"~"^' + escapeRegex(cityName) + '$",i]["boundary"="administrative"]["admin_level"~"6|7|8"]->.searchArea;')
+        : (stateIso ? 'area.stateArea->.searchArea;' : 'area.countryArea->.searchArea;');
+    const target = cityBbox
+      ? "nwr(" + cityBbox + ")" + filter
+      : "nwr(area.searchArea)" + filter;
+    const q = "[out:json][timeout:20];" + stateScope + searchScope + target + ";out center tags;";
 
     let json:any = null;
     let lastStatus = 503;
