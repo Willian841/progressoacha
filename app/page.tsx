@@ -294,7 +294,13 @@ function Leads({leads,setLeads,query,setQuery,notify,searchUsage,setSearchUsage,
       .then(res=>res.ok?res.json():{cities:[]})
       .then((payload:any)=>{
         if(cancelled) return;
-        setCityOptions(Array.isArray(payload.cities) ? payload.cities : []);
+        const discovered=Array.isArray(payload.cities) ? payload.cities : [];
+        // Preserve a city selected by a popular search even if OSM does not
+        // return that municipality in the discovery query for the segment.
+        setCityOptions(prev=>{
+          const selected=cityFilter.trim();
+          return Array.from(new Set([...(selected ? [selected] : []),...discovered,...prev]));
+        });
       })
       .catch(()=>{if(!cancelled)setCityOptions([]);})
       .finally(()=>{if(!cancelled)setCitiesLoading(false);});
