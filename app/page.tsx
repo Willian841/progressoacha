@@ -313,7 +313,7 @@ function Leads({leads,setLeads,query,setQuery,notify,searchUsage,setSearchUsage,
   const filtered=leads.filter(l=>{
     return (!segmentFilter || l.segment.toLowerCase().includes(segmentFilter.toLowerCase()))
       && (!stateFilter || l.state.toLowerCase()===stateFilter.toLowerCase())
-      && (!cityFilter || l.city.toLowerCase().includes(cityFilter.toLowerCase()))
+      && (areaFilter==="region" || !cityFilter || l.city.toLowerCase().includes(cityFilter.toLowerCase()))
       && l.score >= 0;
   });
 
