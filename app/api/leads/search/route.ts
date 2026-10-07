@@ -107,6 +107,48 @@ export async function POST(request:Request) {
     const {data:{user}} = await supabase.auth.getUser();
     if (!user) return NextResponse.json({error:"Não autenticado."},{status:401});
 
+    // A lista de cidades é apenas descoberta de disponibilidade: não consome busca do plano.
+    // Ela retorna somente municípios onde o OpenStreetMap possui estabelecimentos do segmento.
+    if (String(body.mode || "") === "cities") {
+      const cityState = String(body.state || "").trim().toUpperCase();
+      const citySegment = String(body.segment || "").trim();
+      const stateIsoForCities = STATE_ISO[cityState];
+      if (!stateIsoForCities) return NextResponse.json({cities:[]});
+      const cityFilter = tagFilter(citySegment);
+      const stateQuery =
+        '[out:json][timeout:20];' +
+        'area["ISO3166-2"="' + stateIsoForCities + '"]["boundary"="administrative"]["admin_level"="4"]->.stateArea;' +
+        'nwr(area.stateArea)' + cityFilter + ';out center tags;';
+      let cityJson:any = null;
+      for (const endpoint of OVERPASS_URLS) {
+        try {
+          const controller = new AbortController();
+          const timeout = setTimeout(() => controller.abort(), 23000);
+          const response = await fetch(endpoint,{
+            method:"POST",
+            headers:{"Content-Type":"application/x-www-form-urlencoded","User-Agent":"ProgressoAcha/1.0"},
+            body:new URLSearchParams({data:stateQuery}),
+            cache:"no-store",
+            signal:controller.signal
+          });
+          clearTimeout(timeout);
+          if(response.ok){ cityJson=await response.json(); break; }
+        } catch(error) {
+          console.error("City discovery endpoint failed", endpoint, error);
+        }
+      }
+      if(!cityJson) return NextResponse.json({cities:[],warning:"Não foi possível carregar as cidades agora."});
+      const names = new Set<string>();
+      for(const element of (Array.isArray(cityJson.elements) ? cityJson.elements : [])){
+        const tags=element?.tags || {};
+        const city=String(tags["addr:city"] || tags["addr:municipality"] || "").trim();
+        if(city) names.add(city);
+      }
+      return NextResponse.json({
+        cities:Array.from(names).sort((a,b)=>a.localeCompare(b,"pt-BR"))
+      });
+    }
+
     const {data:profile,error:profileError} = await supabase.from("profiles").select("plan_code").eq("id",user.id).maybeSingle();
     if(profileError) return NextResponse.json({error:"Não foi possível validar o plano."},{status:500});
     const {data:limits,error:limitsError} = await supabase.rpc("plan_limits",{p_plan:profile?.plan_code || "free"});
