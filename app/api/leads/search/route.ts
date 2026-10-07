@@ -96,7 +96,16 @@ export async function POST(request:Request) {
     const {data:limits,error:limitsError} = await supabase.rpc("plan_limits",{p_plan:profile?.plan_code || "free"});
     if(limitsError || !limits?.[0]) return NextResponse.json({error:"Não foi possível validar os limites do plano."},{status:500});
     const companiesPerSearch = Number(limits[0].companies_per_search);
+    const searchLimit = limits[0].search_limit == null ? null : Number(limits[0].search_limit);
     if(!Number.isFinite(companiesPerSearch) || companiesPerSearch < 1) return NextResponse.json({error:"Limite de empresas por busca inválido."},{status:500});
+    if(searchLimit !== null) {
+      const monthStart = new Date();
+      monthStart.setUTCDate(1);
+      monthStart.setUTCHours(0,0,0,0);
+      const {data:usageRow,error:usageReadError} = await supabase.from("usage_monthly").select("search_count").eq("user_id",user.id).eq("month_start",monthStart.toISOString().slice(0,10)).maybeSingle();
+      if(usageReadError) return NextResponse.json({error:"Não foi possível verificar o uso do plano."},{status:500});
+      if(Number(usageRow?.search_count || 0) >= searchLimit) return NextResponse.json({error:`Seu plano atingiu o limite de ${searchLimit} buscas neste período. Faça upgrade para continuar.`},{status:402});
+    }
 
     const cityName = city;
     const inferredTerm = !segment ? (query.match(/^(.*?)\s+(?:em|na|no)\s+/i)?.[1]?.trim() || (cityName ? query : "")) : "";
@@ -109,16 +118,18 @@ export async function POST(request:Request) {
       ? 'area["name"~"^' + escapeRegex(stateName) + '$",i]["boundary"="administrative"]["admin_level"="4"]->.stateArea;'
       : 'area["ISO3166-1"="BR"]->.countryArea;';
     const searchScope = cityName
-      ? 'area["name"~"^' + escapeRegex(cityName) + '$",i]["boundary"="administrative"]["admin_level"~"6|7|8"]->.searchArea;'
+      ? (stateIso
+          ? 'rel(area.stateArea)["boundary"="administrative"]["admin_level"~"6|7|8"]["name"~"^' + escapeRegex(cityName) + '$",i]->.cityRel;map_to_area.cityRel->.searchArea;'
+          : 'area["name"~"^' + escapeRegex(cityName) + '$",i]["boundary"="administrative"]["admin_level"~"6|7|8"]->.searchArea;')
       : (stateIso ? 'area.stateArea->.searchArea;' : 'area.countryArea->.searchArea;');
-    const q = "[out:json][timeout:60];" + stateScope + searchScope + "nwr(area.searchArea)" + filter + ";out center tags;";
+    const q = "[out:json][timeout:35];" + stateScope + searchScope + "nwr(area.searchArea)" + filter + ";out center tags;";
 
     let json:any = null;
     let lastStatus = 503;
     for (const endpoint of OVERPASS_URLS) {
       try {
         const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 65000);
+        const timeout = setTimeout(() => controller.abort(), 40000);
         const response = await fetch(endpoint,{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded","User-Agent":"ProgressoAcha/1.0"},body:new URLSearchParams({data:q}),cache:"no-store",signal:controller.signal});
         clearTimeout(timeout);
         lastStatus = response.status;
@@ -146,7 +157,14 @@ export async function POST(request:Request) {
     }).filter((r:any)=>r.name && r.name !== "Empresa sem nome").slice(0,companiesPerSearch);
 
     const {data:usageResult,error:usageError} = await supabase.rpc("consume_search",{p_segment:segment||undefined,p_country:"Brasil",p_state:state||undefined,p_city:city||cityName,p_area:undefined,p_filters:{query,source:"openstreetmap"},p_result_count:rows.length});
-    if(usageError || !usageResult?.[0]?.allowed) return NextResponse.json({error:"Limite do plano atingido ou não foi possível registrar o uso."},{status:402});
+    if(usageError) {
+      console.error("consume_search failed", usageError);
+      return NextResponse.json({error:"Não foi possível registrar o uso da busca. Tente novamente."},{status:500});
+    }
+    if(!usageResult?.[0]?.allowed) {
+      const limit = usageResult?.[0]?.usage_limit == null ? null : Number(usageResult[0].usage_limit);
+      return NextResponse.json({error:limit == null ? "A busca não foi autorizada pelo plano atual." : `Seu plano atingiu o limite de ${limit} buscas neste período. Faça upgrade para continuar.`},{status:402});
+    }
     let savedRows=rows;
     if(rows.length) {
       const {data:upsertedRows,error:upsertError} = await supabase.from("leads").upsert(rows,{onConflict:"user_id,source,source_id"}).select("*");
