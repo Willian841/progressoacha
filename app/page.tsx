@@ -268,47 +268,59 @@ function Dashboard({userName,leads,pipeline,revenue,onSearch,onPipeline,onAgenda
 
 function Stat({icon:Icon,label,value,note}:{icon:any,label:string,value:string,note:string}){return <div className="stat"><div className="stat-icon"><Icon size={18}/></div><div><span>{label}</span><b>{value}</b><small>{note}</small></div></div>}
 
-function Leads({leads,setLeads,query,setQuery,notify,searchUsage,setSearchUsage,planCode,setPipeline}:{leads:LeadRow[],setLeads:React.Dispatch<React.SetStateAction<LeadRow[]>>,query:string,setQuery:(v:string)=>void,notify:(s:string)=>void,searchUsage:{used:number;limit:number|null},setSearchUsage:React.Dispatch<React.SetStateAction<{used:number;limit:number|null}>>,planCode:string,setPipeline:React.Dispatch<React.SetStateAction<Record<string,string>>>}) {
- const [advanced,setAdvanced]=useState(false);
- const [segmentFilter,setSegmentFilter]=useState("");
- const [stateFilter,setStateFilter]=useState("");
- const [cityFilter,setCityFilter]=useState("");
- const [siteFilter,setSiteFilter]=useState("all");
- const [scoreFilter,setScoreFilter]=useState("0");
- const [searching,setSearching]=useState(false);
- const filtered=leads.filter(l=>{
-   return (!segmentFilter || l.segment.toLowerCase().includes(segmentFilter.toLowerCase()))
-     && (!stateFilter || l.state.toLowerCase()===stateFilter.toLowerCase())
-     && (!cityFilter || l.city.toLowerCase().includes(cityFilter.toLowerCase()))
-     && (siteFilter==="all" || (siteFilter==="without" ? !l.hasSite : l.hasSite))
-     && l.score >= Number(scoreFilter);
- });
- const runSearch=async()=>{
-   const cleanQuery=query.trim();
-   if(!cleanQuery && !segmentFilter.trim() && !cityFilter.trim() && !stateFilter.trim()){
-     notify("Informe o que você quer buscar antes de continuar.");
-     return;
-   }
-   try{
-     setSearching(true);
-     setLeads([]);
-     const response = await fetch("/api/leads/search",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({query:cleanQuery,segment:segmentFilter.trim(),city:cityFilter.trim(),state:stateFilter.trim()})});
-     const payload = await response.json();
-     if(!response.ok){notify(payload.error || "Não foi possível realizar a busca.");return;}
-     const rows:LeadRow[] = (payload.leads || []).map((r:any)=>({id:r.id || `osm-${r.source_id}`,name:r.name,segment:r.segment || segmentFilter || "Outros",location:[r.city,r.state].filter(Boolean).join(", "),country:r.country || "Brasil",state:r.state || "",city:r.city || "",area:r.area || "",hasSite:r.website_status === "found",score:Number(r.opportunity_score || 0),phone:r.phone || "",address:r.address || "",latitude:r.latitude ?? null,longitude:r.longitude ?? null}));
-     setLeads(rows.sort((a,b)=>b.score-a.score));
-     const usage=payload.usage;
-     if(usage) setSearchUsage({used:usage.used,limit:usage.usage_limit});
-     notify(`Busca real concluída: ${rows.length} empresas encontradas.`);
-   }catch(error){console.error(error);notify("Não foi possível realizar a busca agora.");}
-   finally { setSearching(false); }
- };
- return <><Header eyebrow="PROSPECÇÃO INTELIGENTE" title="Buscar Leads" text="Encontre empresas, identifique oportunidades e comece a conversa." action={<div className="usage"><span>Buscas</span><b>{searchUsage.used} / {searchUsage.limit === null ? "∞" : searchUsage.limit}</b><div><i style={{width:`${searchUsage.limit===null?100:Math.min(100,(searchUsage.used/Math.max(searchUsage.limit,1))*100)}%`}}/></div></div>}/>
- <div className="searchbar"><div><Search size={18}/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Ex.: restaurantes em Salvador..."/><kbd>⌘ K</kbd></div><button className={advanced?"secondary active-filter":"secondary"} onClick={()=>setAdvanced(v=>!v)}><Settings size={16}/> Filtros avançados</button><button className="primary" onClick={runSearch} disabled={searching}>{searching?"Buscando...":"Buscar"}</button></div>
- {advanced && <div className="advanced-filters"><input value={segmentFilter} onChange={e=>setSegmentFilter(e.target.value)} placeholder="Segmento"/><input value={stateFilter} onChange={e=>setStateFilter(e.target.value.toUpperCase())} placeholder="UF"/><input value={cityFilter} onChange={e=>setCityFilter(e.target.value)} placeholder="Cidade"/><select value={siteFilter} onChange={e=>setSiteFilter(e.target.value)}><option value="all">Qualquer site</option><option value="without">Sem site</option><option value="with">Com site</option></select><select value={scoreFilter} onChange={e=>setScoreFilter(e.target.value)}><option value="0">Qualquer score</option><option value="80">Score 80+</option><option value="90">Score 90+</option></select></div>}
- <div className="metrics"><div><b>{filtered.length}</b><span>Empresas encontradas</span></div><div><b className="green">{filtered.filter(l=>!l.hasSite).length}</b><span>Sem site</span></div><div><b>{filtered.filter(l=>l.hasSite).length}</b><span>Com site</span></div><div><b className="cyan">{filtered.filter(l=>l.score>=80).length}</b><span>Oportunidades altas</span></div></div>
- <LeadMap leads={filtered} notify={notify}/>
- <section className="panel"><div className="panelhead"><div><h2>Resultados da busca</h2><p>{filtered.length} empresas nesta visualização</p></div><div className="panelhead-meta"><span className="muted">Base inteligente · {planCode}</span><small className="muted">Dados de OpenStreetMap · © contribuidores OSM</small></div></div>{filtered.map(l=><div className="lead" key={l.id}><button className="icon-action" onClick={async()=>{const supabase=createClient() as any;const {data:userData}=await supabase.auth.getUser();if(!userData.user)return;const {error}=await supabase.from("pipeline_items").upsert({user_id:userData.user.id,lead_id:l.id,stage:"selected"},{onConflict:"user_id,lead_id"});if(error){notify("Não foi possível adicionar ao CRM.");return;}setPipeline(prev=>({...prev,[l.id]:"Selecionado"}));notify("Lead adicionado à prospecção.");}} aria-label={`Adicionar ${l.name} ao CRM`}><Target size={15}/></button><div className="company small">{l.name[0]}</div><div className="leadinfo"><b>{l.name}</b><span>{l.segment} · {l.location}</span></div><div className="site">{l.hasSite?<><i className="dot ok"/>Site encontrado</>:<><i className="dot warn"/>Site não identificado</>}</div><strong className="potential">{l.score}</strong>{l.phone ? <a className="icon-action" href={whatsappUrl(l.phone,commercialMessage(l.name))} target="_blank" rel="noopener noreferrer" aria-label={`Abrir WhatsApp para ${l.name}`}><MessageCircle size={15}/></a> : <button className="icon-action" disabled aria-label={`WhatsApp indisponível para ${l.name}`}><MessageCircle size={15}/></button>}</div>)}</section></>;
+function Leads({leads,setLeads,query,setQuery,notify,searchUsage,setSearchUsage,planCode,setPipeline}:{leads:LeadRow[],setLeads:React.Dispatch<React.SetStateAction<LeadRow[]>>,query:string,setQuery:(v:string)=>void,notify:(s:string)=>void,searchUsage:{used:number;limit:number|null},setSearchUsage:React.Dispatch<React.SetStateAction<{used:number;limit:number|null}>>,planCode:string,setPipeline:React.Dispatch<React.SetStateAction<Record<string,string>>>) {
+  const [segmentFilter,setSegmentFilter]=useState("");
+  const [stateFilter,setStateFilter]=useState("");
+  const [cityFilter,setCityFilter]=useState("");
+  const [areaFilter,setAreaFilter]=useState("city");
+  const [searching,setSearching]=useState(false);
+
+  const segments=["Restaurantes","Dentistas","Advogados","Academias","Farmácias","Hotéis","Clínicas","Salões de beleza","Imobiliárias","Oficinas","Lojas","Outros"];
+  const states=[["AC","Acre"],["AL","Alagoas"],["AP","Amapá"],["AM","Amazonas"],["BA","Bahia"],["CE","Ceará"],["DF","Distrito Federal"],["ES","Espírito Santo"],["GO","Goiás"],["MA","Maranhão"],["MT","Mato Grosso"],["MS","Mato Grosso do Sul"],["MG","Minas Gerais"],["PA","Pará"],["PB","Paraíba"],["PR","Paraná"],["PE","Pernambuco"],["PI","Piauí"],["RJ","Rio de Janeiro"],["RN","Rio Grande do Norte"],["RS","Rio Grande do Sul"],["RO","Rondônia"],["RR","Roraima"],["SC","Santa Catarina"],["SP","São Paulo"],["SE","Sergipe"],["TO","Tocantins"]];
+
+  const filtered=leads.filter(l=>{
+    return (!segmentFilter || l.segment.toLowerCase().includes(segmentFilter.toLowerCase()))
+      && (!stateFilter || l.state.toLowerCase()===stateFilter.toLowerCase())
+      && (!cityFilter || l.city.toLowerCase().includes(cityFilter.toLowerCase()))
+      && l.score >= 0;
+  });
+
+  const runSearch=async()=>{
+    if(!segmentFilter && !cityFilter.trim() && !stateFilter){
+      notify("Escolha pelo menos um segmento, estado ou cidade.");
+      return;
+    }
+    const builtQuery=segmentFilter ? (cityFilter.trim() ? `${segmentFilter} em ${cityFilter.trim()}` : stateFilter ? `${segmentFilter} em ${states.find(([uf])=>uf===stateFilter)?.[1] || stateFilter}` : segmentFilter) : cityFilter.trim();
+    try{
+      setSearching(true);
+      setLeads([]);
+      setQuery(builtQuery);
+      const response=await fetch("/api/leads/search",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({query:builtQuery,segment:segmentFilter.trim(),city:cityFilter.trim(),state:stateFilter.trim()})});
+      const payload=await response.json();
+      if(!response.ok){notify(payload.error || "Não foi possível realizar a busca.");return;}
+      const rows:LeadRow[]=(payload.leads||[]).map((r:any)=>({id:r.id || `osm-${r.source_id}`,name:r.name,segment:r.segment || segmentFilter || "Outros",location:[r.city,r.state].filter(Boolean).join(", "),country:r.country || "Brasil",state:r.state || "",city:r.city || "",area:r.area || "",hasSite:r.website_status === "found",score:Number(r.opportunity_score || 0),phone:r.phone || "",address:r.address || "",latitude:r.latitude ?? null,longitude:r.longitude ?? null}));
+      setLeads(rows.sort((a,b)=>b.score-a.score));
+      const usage=payload.usage;
+      if(usage) setSearchUsage({used:usage.used,limit:usage.usage_limit});
+      notify(`Busca concluída: ${rows.length} empresas encontradas.`);
+    }catch(error){console.error(error);notify("Não foi possível realizar a busca agora.");}
+    finally{setSearching(false);}
+  };
+
+  return <><Header eyebrow="PROSPECÇÃO INTELIGENTE" title="Encontre seu próximo cliente" text="Escolha o segmento e a região. O Progresso Acha encontra as oportunidades para você." action={<div className="usage"><span>Buscas</span><b>{searchUsage.used} / {searchUsage.limit === null ? "∞" : searchUsage.limit}</b><div><i style={{width:`${searchUsage.limit===null?100:Math.min(100,(searchUsage.used/Math.max(searchUsage.limit,1))*100)}%`}}/></div></div>}/>
+    <section className="panel" style={{marginBottom:18}}>
+      <div className="panelhead"><div><h2>O que você procura?</h2><p>Selecione os dados da busca — sem precisar digitar uma pesquisa.</p></div></div>
+      <div style={{display:"grid",gridTemplateColumns:"1.15fr 1fr 1fr .9fr auto",gap:12,alignItems:"end",marginTop:18}}>
+        <label className="field-label">Segmento<select value={segmentFilter} onChange={e=>setSegmentFilter(e.target.value)}><option value="">Todos os segmentos</option>{segments.map(s=><option key={s} value={s}>{s}</option>)}</select></label>
+        <label className="field-label">Estado / Região<select value={stateFilter} onChange={e=>setStateFilter(e.target.value)}><option value="">Todos os estados</option>{states.map(([uf,name])=><option key={uf} value={uf}>{name} ({uf})</option>)}</select></label>
+        <label className="field-label">Cidade <input value={cityFilter} onChange={e=>setCityFilter(e.target.value)} placeholder="Ex.: São Paulo"/></label>
+        <label className="field-label">Área<select value={areaFilter} onChange={e=>setAreaFilter(e.target.value)}><option value="city">Cidade inteira</option><option value="region">Região</option></select></label>
+        <button className="primary" onClick={runSearch} disabled={searching}>{searching?"Buscando...":"Buscar oportunidades"}</button>
+      </div>
+    </section>
+    <div className="metrics"><div><b>{filtered.length}</b><span>Empresas encontradas</span></div><div><b className="green">{filtered.filter(l=>!l.hasSite).length}</b><span>Sem site</span></div><div><b>{filtered.filter(l=>l.hasSite).length}</b><span>Com site</span></div><div><b className="cyan">{filtered.filter(l=>l.score>=80).length}</b><span>Oportunidades altas</span></div></div>
+    {leads.length>0 && <><LeadMap leads={filtered} notify={notify}/><section className="panel"><div className="panelhead"><div><h2>Resultados da busca</h2><p>{filtered.length} empresas nesta visualização</p></div><div className="panelhead-meta"><span className="muted">Base inteligente · {planCode}</span><small className="muted">Dados de OpenStreetMap · © contribuidores OSM</small></div></div>{filtered.map(l=><div className="lead" key={l.id}><button className="icon-action" onClick={async()=>{const supabase=createClient() as any;const {data:userData}=await supabase.auth.getUser();if(!userData.user)return;const {error}=await supabase.from("pipeline_items").upsert({user_id:userData.user.id,lead_id:l.id,stage:"selected"},{onConflict:"user_id,lead_id"});if(error){notify("Não foi possível adicionar ao CRM.");return;}setPipeline(prev=>({...prev,[l.id]:"Selecionado"}));notify("Lead adicionado à prospecção.");}} aria-label={`Adicionar ${l.name} ao CRM`}><Target size={15}/></button><div className="company small">{l.name[0]}</div><div className="leadinfo"><b>{l.name}</b><span>{l.segment} · {l.location}</span></div><div className="site">{l.hasSite?<><i className="dot ok"/>Site encontrado</>:<><i className="dot warn"/>Site não identificado</>}</div><strong className="potential">{l.score}</strong>{l.phone ? <a className="icon-action" href={whatsappUrl(l.phone,commercialMessage(l.name))} target="_blank" rel="noopener noreferrer" aria-label={`Abrir WhatsApp para ${l.name}`}><MessageCircle size={15}/></a> : <button className="icon-action" disabled aria-label={`WhatsApp indisponível para ${l.name}`}><MessageCircle size={15}/></button>}</div>)}</section></>}
+  </>;
 }
 function LeadMap({leads,notify}:{leads:LeadRow[];notify:(s:string)=>void}) {
  const points=leads.filter(l=>typeof l.latitude==="number"&&typeof l.longitude==="number");
