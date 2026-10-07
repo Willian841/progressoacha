@@ -166,6 +166,9 @@ export async function POST(request:Request) {
     }
 
     const cityName = city;
+    // Quando a cidade foi escolhida pela interface, ela tem prioridade absoluta.
+    // Nunca reutilizamos resultados antigos de outro município.
+    const requestedCity = normalizeText(cityName);
 
     // Para buscas por cidade, resolve primeiro a cidade para um bounding box
     // via Nominatim. Isso evita depender da combinação de relações/áreas
@@ -281,8 +284,11 @@ export async function POST(request:Request) {
         if (r.latitude == null || r.longitude == null) return false;
         const [south, west, north, east] = cityBbox.split(",").map(Number);
         if (!(r.latitude >= south && r.latitude <= north && r.longitude >= west && r.longitude <= east)) return false;
-        const expectedCity = normalizeText(city);
+        const expectedCity = requestedCity;
         const returnedCity = normalizeText(r.city);
+        // OSM nem sempre preenche addr:city. As coordenadas dentro do bbox
+        // são a autoridade para a busca; quando addr:city existir, ele também
+        // precisa bater com a cidade solicitada.
         if (returnedCity && !returnedCity.includes(expectedCity) && !expectedCity.includes(returnedCity)) return false;
       }
       return true;
