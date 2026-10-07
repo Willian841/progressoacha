@@ -78,8 +78,10 @@ export async function POST(request:Request) {
     const body = await request.json();
     const query = String(body.query || "").trim().slice(0,MAX_QUERY_LENGTH);
     const segment = (String(body.segment || "").trim() || inferSegment(query)).slice(0,MAX_SEGMENT_LENGTH);
-    const city = (String(body.city || "").trim() || inferCity(query)).slice(0,MAX_CITY_LENGTH);
-    const state = (String(body.state || "").trim().toUpperCase() || inferState(query)).slice(0,MAX_STATE_LENGTH);
+    const inferredState = (String(body.state || "").trim().toUpperCase() || inferState(query)).slice(0,MAX_STATE_LENGTH);
+    const inferredCity = String(body.city || "").trim() || inferCity(query);
+    const city = (inferredState && STATE_ISO[inferredState] && Object.entries(STATE_NAMES).some(([name, code]) => code === inferredState && name.toLowerCase() === inferredCity.toLowerCase()) ? "" : inferredCity).slice(0,MAX_CITY_LENGTH);
+    const state = inferredState;
     if (!city && !query) return NextResponse.json({error:"Informe uma cidade ou termo de busca."},{status:400});
     const supabase = await createServerSupabaseClient();
     const {data:{user}} = await supabase.auth.getUser();
