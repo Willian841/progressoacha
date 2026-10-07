@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { createClient } from "../lib/supabase-browser";
 import {
-  ArrowUpRight, BarChart3, CalendarDays, Check, ChevronRight, CircleDollarSign, CreditCard,
+  ArrowUpRight, BarChart3, CalendarDays, Check, ChevronRight, CircleDollarSign,
   Globe2, LayoutDashboard, Menu, MessageCircle, Search, Settings, Sparkles,
   Target, TrendingUp, Users, X, Zap, LogOut, Save, LockKeyhole
 } from "lucide-react";
@@ -606,147 +606,8 @@ function Plans({notify,currentPlan}:{notify:(s:string)=>void;currentPlan:string}
  const [plans,setPlans]=useState<Array<{plan_code:string;name:string;price:number;search_limit:number|null;companies_per_search:number;ai_limit:number|null}>>([]);
  const [checkoutPlan,setCheckoutPlan]=useState<string | null>(null);
  const [loadingPlans,setLoadingPlans]=useState(true);
- const [methodPlan,setMethodPlan]=useState<any|null>(null);
- const [pixCpf,setPixCpf]=useState("");
- const [pixLoading,setPixLoading]=useState(false);
- const [pixCode,setPixCode]=useState("");
- const [pixPaymentId,setPixPaymentId]=useState("");
- const [pixExpires,setPixExpires]=useState("");
- const [pixStatus,setPixStatus]=useState("pending");
-
  useEffect(()=>{let mounted=true;(async()=>{try{const {data,error}=await (createClient() as any).from("plan_settings").select("plan_code,name,price,search_limit,companies_per_search,ai_limit").order("price",{ascending:true});if(!mounted)return;if(error){notify("Não foi possível carregar os planos agora.");return;}setPlans(data||[]);}finally{if(mounted)setLoadingPlans(false);}})();return()=>{mounted=false;};},[notify]);
-
- useEffect(()=>{
-   if(!pixPaymentId || pixStatus!=="pending") return;
-   let cancelled=false;
-   let attempts=0;
-   const check=async()=>{
-     attempts++;
-     try{
-       const supabase=createClient() as any;
-       const {data,error}=await supabase.functions.invoke("mercado-pago-pix",{body:{action:"status",payment_id:pixPaymentId}});
-       if(cancelled)return;
-       if(!error && data?.status){
-         setPixStatus(data.status);
-         if(data.status==="approved"){
-           notify("Pagamento Pix confirmado. Seu plano foi ativado.");
-           setMethodPlan(null);
-           setPixCode("");
-           setPixPaymentId("");
-           window.location.reload();
-           return;
-         }
-         if(["rejected","cancelled","expired"].includes(data.status)){
-           notify("Esse Pix não foi aprovado. Você pode gerar outro.");
-           return;
-         }
-       }
-     }catch{}
-     if(!cancelled && attempts<120) window.setTimeout(check,5000);
-   };
-   check();
-   return()=>{cancelled=true;};
- },[pixPaymentId,pixStatus,notify]);
-
- const chooseMethod=(plan:any)=>{
-   if(plan.plan_code==="free"){notify("Plano gratuito disponível.");return;}
-   setMethodPlan(plan);
-   setPixCpf("");
-   setPixCode("");
-   setPixPaymentId("");
-   setPixStatus("pending");
- };
-
- const openCardCheckout=async()=>{
-   if(!methodPlan || checkoutPlan) return;
-   setCheckoutPlan(methodPlan.plan_code);
-   try{
-     const supabase=createClient() as any;
-     const {data,error}=await supabase.functions.invoke("mercado-pago-checkout",{body:{plan_code:methodPlan.plan_code}});
-     if(error||data?.error){
-       const msg=data?.error==="mercado_pago_not_configured"?"Mercado Pago ainda não está configurado no servidor."
-         :data?.error==="already_active"?"Você já está neste plano."
-         :data?.error==="active_subscription_exists"?`Você já possui uma assinatura ativa no plano ${data?.plan_code || "atual"}.`
-         :data?.error==="checkout_in_progress"?"Já existe um checkout em andamento para sua conta. Finalize-o no Mercado Pago ou aguarde alguns minutos."
-         :data?.error==="admin_has_unlimited_access"?"A conta administradora não precisa assinar um plano."
-         :"Não foi possível iniciar o checkout do Mercado Pago.";
-       notify(msg);
-       return;
-     }
-     if(data?.status==="already_active"){notify("Você já está neste plano.");return;}
-     if(data?.checkout_url){window.location.assign(data.checkout_url);return;}
-     notify("O Mercado Pago não retornou o link de checkout.");
-   }finally{setCheckoutPlan(null);}
- };
-
- const generatePix=async()=>{
-   if(!methodPlan || pixLoading) return;
-   const cpf=pixCpf.replace(/\D/g,"");
-   if(cpf.length!==11){notify("Informe um CPF válido para gerar o Pix.");return;}
-   setPixLoading(true);
-   try{
-     const supabase=createClient() as any;
-     const {data,error}=await supabase.functions.invoke("mercado-pago-pix",{body:{plan_code:methodPlan.plan_code,cpf}});
-     if(error||data?.error){
-       const msg=data?.error==="already_active"?"Você já está neste plano."
-         :data?.error==="active_subscription_exists"?`Você já possui uma assinatura ativa no plano ${data?.plan_code || "atual"}.`
-         :data?.error==="pix_not_configured"?"Mercado Pago ainda não está configurado no servidor."
-         :"Não foi possível gerar o Pix agora.";
-       notify(msg);
-       return;
-     }
-     setPixCode(data.qr_code||"");
-     setPixPaymentId(String(data.payment_id||""));
-     setPixExpires(data.expires_at||"");
-     setPixStatus(data.status||"pending");
-   }finally{setPixLoading(false);}
- };
-
- const copyPix=async()=>{
-   if(!pixCode)return;
-   try{await navigator.clipboard.writeText(pixCode);notify("Pix Copia e Cola copiado.");}
-   catch{notify("Não foi possível copiar automaticamente. Selecione o código e copie.");}
- };
-
- return <>
-   <Header eyebrow="PLANOS E ASSINATURAS" title="Escolha o ritmo do seu crescimento." text="Mais leads, mais conversas e mais oportunidades em um só lugar."/>
-   {loadingPlans?<div className="panel" style={{padding:"24px"}}>Carregando planos...</div>:plans.length===0?<div className="panel" style={{padding:"24px"}}>Os planos não estão disponíveis no momento.</div>:<div className="plans">{plans.map((p,i)=><div className={`${p.plan_code==="pro"?"plan featured":"plan"} ${p.plan_code===currentPlan?"current-plan":""}`} key={p.plan_code}>{p.plan_code==="pro"&&<label>Mais escolhido</label>}{p.plan_code==="infinity"&&<label className="gold">Desconto especial</label>}{p.plan_code===currentPlan&&<label className="current">Seu plano</label>}<span>{p.name}</span><strong>{Number(p.price).toLocaleString("pt-BR",{style:"currency",currency:"BRL"})}<small>{p.plan_code!=="free"?"/mês":""}</small></strong><p>Para {p.plan_code==="free"?"começar":p.plan_code==="basic"?"profissionais":"quem quer escalar"} sua prospecção.</p><div className="feature"><Check size={14}/>{p.search_limit===null?"Buscas ilimitadas":`${p.search_limit} buscas / mês`}</div><div className="feature"><Check size={14}/>{p.companies_per_search} empresas por busca</div><div className="feature"><Check size={14}/>{p.ai_limit===null?"IA ilimitada":`${p.ai_limit} abordagens IA / mês`}</div><div className="feature"><Check size={14}/>Filtros avançados</div><div className="feature"><Check size={14}/>Minha Prospecção e Agenda</div><button className={p.plan_code===currentPlan?"secondary":"primary"} disabled={p.plan_code===currentPlan} onClick={()=>chooseMethod(p)}>{p.plan_code===currentPlan?"Plano atual":`Continuar com ${p.name}`}</button></div>)}</div>}
-
-   {methodPlan&&<div onClick={()=>!pixLoading&&setMethodPlan(null)} style={{position:"fixed",inset:0,zIndex:1000,background:"rgba(0,0,0,.65)",display:"flex",alignItems:"center",justifyContent:"center",padding:"20px"}}>
-     <div onClick={e=>e.stopPropagation()} className="panel" style={{width:"min(560px,100%)",padding:"28px",position:"relative",background:"var(--panel,#111827)",borderRadius:"18px",boxShadow:"0 24px 80px rgba(0,0,0,.35)"}}>
-       <button onClick={()=>setMethodPlan(null)} disabled={pixLoading} style={{position:"absolute",right:16,top:16,background:"transparent",border:0,cursor:"pointer",color:"inherit"}}><X size={20}/></button>
-       <div className="eyebrow">FORMA DE PAGAMENTO</div>
-       <h2 style={{margin:"8px 0 6px"}}>Como você quer pagar?</h2>
-       <p style={{marginTop:0,opacity:.75}}>Plano {methodPlan.name} por {Number(methodPlan.price).toLocaleString("pt-BR",{style:"currency",currency:"BRL"})}/mês.</p>
-
-       {!pixCode?<div style={{display:"grid",gap:"12px",marginTop:"22px"}}>
-         <button className="primary" disabled={!!checkoutPlan||pixLoading} onClick={openCardCheckout} style={{justifyContent:"flex-start",padding:"18px"}}>
-           <CreditCard size={18}/><span style={{marginLeft:8}}>{checkoutPlan===methodPlan.plan_code?"Abrindo Mercado Pago...":"Cartão / Mercado Pago"}</span>
-         </button>
-         <button className="secondary" disabled={!!checkoutPlan||pixLoading} onClick={()=>setPixStatus("form")} style={{justifyContent:"flex-start",padding:"18px"}}>
-           <Zap size={18}/><span style={{marginLeft:8}}>Pix <small style={{display:"block",opacity:.7}}>Pagamento mensal manual, sem renovação automática</small></span>
-         </button>
-       </div>:null}
-
-       {pixStatus==="form"&&!pixCode&&<div style={{marginTop:"18px"}}>
-         <label className="field-label">CPF do pagador<input value={pixCpf} onChange={e=>setPixCpf(e.target.value.replace(/\D/g,"").slice(0,11))} inputMode="numeric" placeholder="Somente números"/></label>
-         <button className="primary" disabled={pixLoading} onClick={generatePix} style={{width:"100%",marginTop:12}}>{pixLoading?"Gerando Pix...":"Gerar Pix Copia e Cola"}</button>
-         <p className="settings-note">O CPF é usado somente para criar o pagamento no Mercado Pago e não é exibido publicamente.</p>
-       </div>}
-
-       {pixCode&&<div style={{marginTop:"20px"}}>
-         <div style={{padding:"16px",borderRadius:"14px",background:"rgba(16,185,129,.08)",border:"1px solid rgba(16,185,129,.25)"}}>
-           <strong>Pix gerado</strong>
-           <p style={{margin:"6px 0 12px",opacity:.75}}>Abra o app do seu banco, escolha Pix Copia e Cola e cole o código abaixo.</p>
-           <textarea readOnly value={pixCode} rows={5} style={{width:"100%",resize:"none",fontSize:12}}/>
-           <button className="primary" onClick={copyPix} style={{width:"100%",marginTop:10}}>Copiar Pix Copia e Cola</button>
-           {pixExpires&&<small style={{display:"block",marginTop:10,opacity:.65}}>Validade: {new Date(pixExpires).toLocaleString("pt-BR")}</small>}
-           <div style={{marginTop:12,fontWeight:600}}>{pixStatus==="approved"?"Pagamento confirmado.":"Aguardando pagamento..."}</div>
-         </div>
-       </div>}
-     </div>
-   </div>}
- </>;
+ return <><Header eyebrow="PLANOS E ASSINATURAS" title="Escolha o ritmo do seu crescimento." text="Mais leads, mais conversas e mais oportunidades em um só lugar."/>{loadingPlans?<div className="panel" style={{padding:"24px"}}>Carregando planos...</div>:plans.length===0?<div className="panel" style={{padding:"24px"}}>Os planos não estão disponíveis no momento.</div>:<div className="plans">{plans.map((p,i)=><div className={`${p.plan_code==="pro"?"plan featured":"plan"} ${p.plan_code===currentPlan?"current-plan":""}`} key={p.plan_code}>{p.plan_code==="pro"&&<label>Mais escolhido</label>}{p.plan_code==="infinity"&&<label className="gold">Desconto especial</label>}{p.plan_code===currentPlan&&<label className="current">Seu plano</label>}<span>{p.name}</span><strong>{Number(p.price).toLocaleString("pt-BR",{style:"currency",currency:"BRL"})}<small>{p.plan_code!=="free"?"/mês":""}</small></strong><p>Para {p.plan_code==="free"?"começar":p.plan_code==="basic"?"profissionais":"quem quer escalar"} sua prospecção.</p><div className="feature"><Check size={14}/>{p.search_limit===null?"Buscas ilimitadas":`${p.search_limit} buscas / mês`}</div><div className="feature"><Check size={14}/>{p.companies_per_search} empresas por busca</div><div className="feature"><Check size={14}/>{p.ai_limit===null?"IA ilimitada":`${p.ai_limit} abordagens IA / mês`}</div><div className="feature"><Check size={14}/>Filtros avançados</div><div className="feature"><Check size={14}/>Minha Prospecção e Agenda</div><button className={p.plan_code===currentPlan?"secondary":"primary"} disabled={p.plan_code===currentPlan} onClick={async()=>{if(p.plan_code==="free"){notify("Plano gratuito disponível.");return;} if(checkoutPlan){return;} const confirmed=window.confirm(`Você será redirecionado ao Mercado Pago para contratar o plano ${p.name} por ${Number(p.price).toLocaleString("pt-BR",{style:"currency",currency:"BRL"})}/mês.\n\nAbrir o checkout não cobra nada. A cobrança só acontece se você concluir o pagamento no Mercado Pago.\n\nDeseja continuar?`); if(!confirmed){return;} setCheckoutPlan(p.plan_code); try { const supabase=createClient() as any; const {data,error}=await supabase.functions.invoke("mercado-pago-checkout",{body:{plan_code:p.plan_code}}); if(error||data?.error){const msg=data?.error==="mercado_pago_not_configured"?"Mercado Pago ainda não está configurado no servidor.":data?.error==="already_active"?"Você já está neste plano.":data?.error==="active_subscription_exists"?`Você já possui uma assinatura ativa no plano ${data?.plan_code || "atual"}.`:data?.error==="checkout_in_progress"?"Já existe um checkout em andamento para sua conta. Aguarde alguns minutos antes de tentar novamente.":data?.error==="admin_has_unlimited_access"?"A conta administradora não precisa assinar um plano.":"Não foi possível iniciar o checkout do Mercado Pago.";notify(msg);return;} if(data?.status==="already_active"){notify("Você já está neste plano.");return;} if(data?.checkout_url){window.location.assign(data.checkout_url);return;} notify("O Mercado Pago não retornou o link de checkout."); } finally { setCheckoutPlan(null); }}}>{p.plan_code===currentPlan?"Plano atual":checkoutPlan===p.plan_code?"Abrindo Mercado Pago...":`Continuar com ${p.name}`}</button></div>)}</div>}</>
 }
 function SettingsPage({userName,setUserName,userEmail,planCode,theme,setTheme,language,setLanguage,notify}:{userName:string;setUserName:(v:string)=>void;userEmail:string;planCode:string;theme:"dark"|"light";setTheme:(v:"dark"|"light")=>void;language:string;setLanguage:(v:string)=>void;notify:(s:string)=>void}) {
   const [name,setName]=useState(userName);
