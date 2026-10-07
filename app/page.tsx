@@ -280,21 +280,26 @@ function Leads({leads,setLeads,query,setQuery,notify,searchUsage,setSearchUsage,
   useEffect(()=>{
     if(!stateFilter){
       setCityOptions([]);
+      setCityFilter("");
       return;
     }
     let cancelled=false;
     setCitiesLoading(true);
     setCityFilter("");
-    fetch(`https://servicodados.ibge.gov.br/api/v1/localidades/estados/${stateFilter}/municipios`)
-      .then(res=>res.ok?res.json():[])
-      .then((rows:any[])=>{
+    fetch("/api/leads/search",{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({mode:"cities",state:stateFilter,segment:segmentFilter})
+    })
+      .then(res=>res.ok?res.json():{cities:[]})
+      .then((payload:any)=>{
         if(cancelled) return;
-        setCityOptions((rows||[]).map(r=>r.nome).filter(Boolean).sort((a,b)=>a.localeCompare(b,"pt-BR")));
+        setCityOptions(Array.isArray(payload.cities) ? payload.cities : []);
       })
       .catch(()=>{if(!cancelled)setCityOptions([]);})
       .finally(()=>{if(!cancelled)setCitiesLoading(false);});
     return ()=>{cancelled=true;};
-  },[stateFilter]);
+  },[stateFilter,segmentFilter]);
 
   const segments=["Restaurantes","Dentistas","Advogados","Academias","Farmácias","Hotéis","Clínicas","Salões de beleza","Imobiliárias","Oficinas","Lojas","Outros"];
   const states=[["AC","Acre"],["AL","Alagoas"],["AP","Amapá"],["AM","Amazonas"],["BA","Bahia"],["CE","Ceará"],["DF","Distrito Federal"],["ES","Espírito Santo"],["GO","Goiás"],["MA","Maranhão"],["MT","Mato Grosso"],["MS","Mato Grosso do Sul"],["MG","Minas Gerais"],["PA","Pará"],["PB","Paraíba"],["PR","Paraná"],["PE","Pernambuco"],["PI","Piauí"],["RJ","Rio de Janeiro"],["RN","Rio Grande do Norte"],["RS","Rio Grande do Sul"],["RO","Rondônia"],["RR","Roraima"],["SC","Santa Catarina"],["SP","São Paulo"],["SE","Sergipe"],["TO","Tocantins"]];
