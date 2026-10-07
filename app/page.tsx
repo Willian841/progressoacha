@@ -286,7 +286,6 @@ function Leads({leads,setLeads,query,setQuery,notify,searchUsage,setSearchUsage,
     }
     let cancelled=false;
     setCitiesLoading(true);
-    setCityFilter("");
     fetch("/api/leads/search",{
       method:"POST",
       headers:{"Content-Type":"application/json"},
@@ -340,7 +339,7 @@ function Leads({leads,setLeads,query,setQuery,notify,searchUsage,setSearchUsage,
       <div className="panelhead"><div><h2>O que você procura?</h2><p>Selecione os dados da busca — sem precisar digitar uma pesquisa.</p></div></div>
       <div style={{display:"grid",gridTemplateColumns:"repeat(4,minmax(0,1fr))",gap:12,alignItems:"end",marginTop:18}}>
         <label className="field-label">Segmento<select value={segmentFilter} onChange={e=>setSegmentFilter(e.target.value)}><option value="">Todos os segmentos</option>{segments.map(s=><option key={s} value={s}>{s}</option>)}</select></label>
-        <label className="field-label">Estado / Região<select value={stateFilter} onChange={e=>setStateFilter(e.target.value)}><option value="">Todos os estados</option>{states.map(([uf,name])=><option key={uf} value={uf}>{name} ({uf})</option>)}</select></label>
+        <label className="field-label">Estado / Região<select value={stateFilter} onChange={e=>{setStateFilter(e.target.value);setCityFilter("");}}><option value="">Todos os estados</option>{states.map(([uf,name])=><option key={uf} value={uf}>{name} ({uf})</option>)}</select></label>
         <label className="field-label">Cidade
           <select value={cityFilter} onChange={e=>setCityFilter(e.target.value)} disabled={!stateFilter || citiesLoading}>
             <option value="">{!stateFilter ? "Selecione o estado primeiro" : citiesLoading ? "Carregando cidades..." : "Selecione a cidade"}</option>
@@ -349,6 +348,33 @@ function Leads({leads,setLeads,query,setQuery,notify,searchUsage,setSearchUsage,
         </label>
         <label className="field-label">Área<select value={areaFilter} onChange={e=>setAreaFilter(e.target.value)}><option value="city">Cidade inteira</option><option value="region">Região</option></select></label>
         <button className="primary" style={{gridColumn:"1 / -1",justifySelf:"start",marginTop:4}} onClick={runSearch} disabled={searching}>{searching?"Buscando...":"Buscar oportunidades"}</button>
+      </div>
+    </section>
+    <section className="panel" style={{marginBottom:18}}>
+      <div className="panelhead">
+        <div><div className="eyebrow"><span className="pulse"/> PESQUISAS PARA EXPERIMENTAR</div><h2>Comece por uma busca popular</h2><p>Escolha uma sugestão e o Progresso Acha fará a busca real naquela cidade — sem carregar leads antigos.</p></div>
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(220px,1fr))",gap:10,marginTop:16}}>
+        {[
+          ["Restaurantes","São Paulo","SP"],
+          ["Dentistas","Curitiba","PR"],
+          ["Academias","Belo Horizonte","MG"],
+          ["Farmácias","Fortaleza","CE"],
+          ["Hotéis","Rio de Janeiro","RJ"],
+          ["Advogados","Brasília","DF"]
+        ].sort(()=>Math.random()-.5).slice(0,4).map(([segment,city,state])=>
+          <button key={segment+city} className="secondary" style={{textAlign:"left",padding:"14px 15px",minHeight:72}} onClick={()=>{
+            setSegmentFilter(segment);
+            setStateFilter(state);
+            setCityFilter(city);
+            setCityOptions(prev=>Array.from(new Set([city,...prev])));
+            setHasSearched(false);
+            notify(`Busca preparada: ${segment} em ${city}. Clique em “Buscar oportunidades”.`);
+          }}>
+            <span style={{display:"block",fontWeight:700}}>{segment} em {city}</span>
+            <span className="muted" style={{display:"block",fontSize:11,marginTop:4}}>Busca real · {state}</span>
+          </button>
+        )}
       </div>
     </section>
     <div className="metrics"><div><b>{filtered.length}</b><span>Empresas encontradas</span></div><div><b className="green">{filtered.filter(l=>!l.hasSite).length}</b><span>Sem site</span></div><div><b>{filtered.filter(l=>l.hasSite).length}</b><span>Com site</span></div><div><b className="cyan">{filtered.filter(l=>l.score>=80).length}</b><span>Oportunidades altas</span></div></div>
