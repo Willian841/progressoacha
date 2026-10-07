@@ -41,7 +41,7 @@ function inferSegment(query:string) {
 
 function inferState(query:string) {
   const normalized = query.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-  const ufMatch = normalized.match(/(?:,\\s*|\\s+)(ac|al|ap|am|ba|ce|df|es|go|ma|mt|ms|mg|pa|pb|pr|pe|pi|rj|rn|rs|ro|rr|sc|sp|se|to)\\s*$/i);
+  const ufMatch = normalized.match(/(?:,\s*|\s+)(ac|al|ap|am|ba|ce|df|es|go|ma|mt|ms|mg|pa|pb|pr|pe|pi|rj|rn|rs|ro|rr|sc|sp|se|to)\s*$/i);
   if (ufMatch) return ufMatch[1].toUpperCase();
   for (const [name, code] of Object.entries(STATE_NAMES)) {
     const n = name.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
