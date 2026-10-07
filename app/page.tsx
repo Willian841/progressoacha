@@ -311,6 +311,8 @@ function Leads({leads,setLeads,query,setQuery,notify,searchUsage,setSearchUsage,
       && l.score >= 0;
   });
 
+  const [popularSearches] = useState(() => [["Restaurantes","São Paulo","SP"],["Dentistas","Curitiba","PR"],["Academias","Belo Horizonte","MG"],["Farmácias","Fortaleza","CE"],["Hotéis","Rio de Janeiro","RJ"],["Advogados","Brasília","DF"]].sort(()=>Math.random()-.5).slice(0,4));
+
   const runSearch=async()=>{
     if(!segmentFilter && !cityFilter.trim() && !stateFilter){
       notify("Escolha pelo menos um segmento, estado ou cidade.");
@@ -355,14 +357,7 @@ function Leads({leads,setLeads,query,setQuery,notify,searchUsage,setSearchUsage,
         <div><div className="eyebrow"><span className="pulse"/> PESQUISAS PARA EXPERIMENTAR</div><h2>Comece por uma busca popular</h2><p>Escolha uma sugestão e o Progresso Acha fará a busca real naquela cidade — sem carregar leads antigos.</p></div>
       </div>
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(220px,1fr))",gap:10,marginTop:16}}>
-        {[
-          ["Restaurantes","São Paulo","SP"],
-          ["Dentistas","Curitiba","PR"],
-          ["Academias","Belo Horizonte","MG"],
-          ["Farmácias","Fortaleza","CE"],
-          ["Hotéis","Rio de Janeiro","RJ"],
-          ["Advogados","Brasília","DF"]
-        ].sort(()=>Math.random()-.5).slice(0,4).map(([segment,city,state])=>
+        {popularSearches.map(([segment,city,state])=>
           <button key={segment+city} className="secondary" style={{textAlign:"left",padding:"14px 15px",minHeight:72}} onClick={()=>{
             setSegmentFilter(segment);
             setStateFilter(state);
