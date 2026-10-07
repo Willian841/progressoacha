@@ -119,7 +119,7 @@ export async function POST(request:Request) {
       : 'area["ISO3166-1"="BR"]->.countryArea;';
     const searchScope = cityName
       ? (stateIso
-          ? 'rel(area.stateArea)["boundary"="administrative"]["admin_level"~"6|7|8"]["name"~"^' + escapeRegex(cityName) + '$",i]->.cityRel;map_to_area.cityRel->.searchArea;'
+          ? 'rel(area.stateArea)["boundary"="administrative"]["admin_level"~"6|7|8"]["name"~"^' + escapeRegex(cityName) + '$",i]->.cityRel;.cityRel map_to_area -> .searchArea;'
           : 'area["name"~"^' + escapeRegex(cityName) + '$",i]["boundary"="administrative"]["admin_level"~"6|7|8"]->.searchArea;')
       : (stateIso ? 'area.stateArea->.searchArea;' : 'area.countryArea->.searchArea;');
     const q = "[out:json][timeout:35];" + stateScope + searchScope + "nwr(area.searchArea)" + filter + ";out center tags;";
