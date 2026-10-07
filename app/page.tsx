@@ -331,7 +331,7 @@ function Leads({leads,setLeads,query,setQuery,notify,searchUsage,setSearchUsage,
   return <><Header eyebrow="PROSPECÇÃO INTELIGENTE" title="Encontre seu próximo cliente" text="Escolha o segmento e a região. O Progresso Acha encontra as oportunidades para você." action={<div className="usage"><span>Buscas</span><b>{searchUsage.used} / {searchUsage.limit === null ? "∞" : searchUsage.limit}</b><div><i style={{width:`${searchUsage.limit===null?100:Math.min(100,(searchUsage.used/Math.max(searchUsage.limit,1))*100)}%`}}/></div></div>}/>
     <section className="panel" style={{marginBottom:18}}>
       <div className="panelhead"><div><h2>O que você procura?</h2><p>Selecione os dados da busca — sem precisar digitar uma pesquisa.</p></div></div>
-      <div style={{display:"grid",gridTemplateColumns:"1.15fr 1fr 1fr .9fr auto",gap:12,alignItems:"end",marginTop:18}}>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(4,minmax(0,1fr))",gap:12,alignItems:"end",marginTop:18}}>
         <label className="field-label">Segmento<select value={segmentFilter} onChange={e=>setSegmentFilter(e.target.value)}><option value="">Todos os segmentos</option>{segments.map(s=><option key={s} value={s}>{s}</option>)}</select></label>
         <label className="field-label">Estado / Região<select value={stateFilter} onChange={e=>setStateFilter(e.target.value)}><option value="">Todos os estados</option>{states.map(([uf,name])=><option key={uf} value={uf}>{name} ({uf})</option>)}</select></label>
         <label className="field-label">Cidade
@@ -341,7 +341,7 @@ function Leads({leads,setLeads,query,setQuery,notify,searchUsage,setSearchUsage,
           </select>
         </label>
         <label className="field-label">Área<select value={areaFilter} onChange={e=>setAreaFilter(e.target.value)}><option value="city">Cidade inteira</option><option value="region">Região</option></select></label>
-        <button className="primary" onClick={runSearch} disabled={searching}>{searching?"Buscando...":"Buscar oportunidades"}</button>
+        <button className="primary" style={{gridColumn:"1 / -1",justifySelf:"start",marginTop:4}} onClick={runSearch} disabled={searching}>{searching?"Buscando...":"Buscar oportunidades"}</button>
       </div>
     </section>
     <div className="metrics"><div><b>{filtered.length}</b><span>Empresas encontradas</span></div><div><b className="green">{filtered.filter(l=>!l.hasSite).length}</b><span>Sem site</span></div><div><b>{filtered.filter(l=>l.hasSite).length}</b><span>Com site</span></div><div><b className="cyan">{filtered.filter(l=>l.score>=80).length}</b><span>Oportunidades altas</span></div></div>
