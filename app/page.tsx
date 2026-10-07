@@ -276,9 +276,7 @@ function Leads({leads,setLeads,query,setQuery,notify,searchUsage,setSearchUsage,
  const [siteFilter,setSiteFilter]=useState("all");
  const [scoreFilter,setScoreFilter]=useState("0");
  const filtered=leads.filter(l=>{
-   const text=(l.name+" "+l.segment+" "+l.location+" "+l.area).toLowerCase();
-   return text.includes(query.toLowerCase())
-     && (!segmentFilter || l.segment.toLowerCase().includes(segmentFilter.toLowerCase()))
+   return (!segmentFilter || l.segment.toLowerCase().includes(segmentFilter.toLowerCase()))
      && (!stateFilter || l.state.toLowerCase()===stateFilter.toLowerCase())
      && (!cityFilter || l.city.toLowerCase().includes(cityFilter.toLowerCase()))
      && (siteFilter==="all" || (siteFilter==="without" ? !l.hasSite : l.hasSite))
