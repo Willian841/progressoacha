@@ -361,7 +361,31 @@ function Leads({leads,setLeads,query,setQuery,notify,searchUsage,setSearchUsage,
       <div className="panelhead"><div><h2>Seu espaço de prospecção</h2><p>Escolha segmento, estado e cidade para carregar estabelecimentos reais da região escolhida.</p></div><div className="company" style={{width:44,height:44}}><Target size={19}/></div></div>
       <div className="stats" style={{marginTop:18}}><div><b>01</b><span>Escolha o segmento</span></div><div><b>02</b><span>Selecione o estado</span></div><div><b>03</b><span>Veja os estabelecimentos</span></div></div>
     </section>}
-    {hasSearched && leads.length>0 && <><LeadMap leads={filtered} notify={notify}/><section className="panel"><div className="panelhead"><div><h2>Resultados da busca</h2><p>{filtered.length} empresas nesta visualização</p></div><div className="panelhead-meta"><span className="muted">Base inteligente · {planCode}</span><small className="muted">Dados de OpenStreetMap · © contribuidores OSM</small></div></div>{filtered.map(l=><div className="lead" key={l.id}><button className="icon-action" onClick={async()=>{const supabase=createClient() as any;const {data:userData}=await supabase.auth.getUser();if(!userData.user)return;const {error}=await supabase.from("pipeline_items").upsert({user_id:userData.user.id,lead_id:l.id,stage:"selected"},{onConflict:"user_id,lead_id"});if(error){notify("Não foi possível adicionar ao CRM.");return;}setPipeline(prev=>({...prev,[l.id]:"Selecionado"}));notify("Lead adicionado à prospecção.");}} aria-label={`Adicionar ${l.name} ao CRM`}><Target size={15}/></button><div className="company small">{l.name[0]}</div><div className="leadinfo"><b>{l.name}</b><span>{l.segment} · {l.location}</span></div><div className="site">{l.hasSite?<><i className="dot ok"/>Site encontrado</>:<><i className="dot warn"/>Site não identificado</>}</div><strong className="potential">{l.score}</strong>{l.phone ? <a className="icon-action" href={whatsappUrl(l.phone,commercialMessage(l.name))} target="_blank" rel="noopener noreferrer" aria-label={`Abrir WhatsApp para ${l.name}`}><MessageCircle size={15}/></a> : <button className="icon-action" disabled aria-label={`WhatsApp indisponível para ${l.name}`}><MessageCircle size={15}/></button>}</div>)}</section></>}
+    {hasSearched && leads.length>0 && <><LeadMap leads={filtered} notify={notify}/><section className="panel" style={{marginTop:18}}>
+      <div className="panelhead">
+        <div><div className="eyebrow"><span className="pulse"/> RESULTADOS DA PROSPECÇÃO</div><h2>Empresas encontradas</h2><p>{filtered.length} oportunidades na região selecionada</p></div>
+        <div style={{display:"flex",gap:8,alignItems:"center"}}><span className="muted" style={{fontSize:12}}>OpenStreetMap</span><span className="badge" style={{padding:"7px 10px",borderRadius:999}}>Score de oportunidade</span></div>
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(280px,1fr))",gap:12,marginTop:18}}>
+        {filtered.map(l=><article key={l.id} style={{border:"1px solid var(--line)",borderRadius:16,padding:16,background:"var(--panel-2,#10151f)",display:"flex",flexDirection:"column",gap:12}}>
+          <div style={{display:"flex",justifyContent:"space-between",gap:10,alignItems:"flex-start"}}>
+            <div style={{display:"flex",gap:11,alignItems:"center",minWidth:0}}>
+              <div className="company small" style={{flex:"0 0 38px",width:38,height:38}}>{l.name.slice(0,1).toUpperCase()}</div>
+              <div style={{minWidth:0}}><b style={{display:"block",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{l.name}</b><span className="muted" style={{fontSize:12}}>{l.segment} · {l.location}</span></div>
+            </div>
+            <div style={{textAlign:"right"}}><strong className="potential" style={{fontSize:20}}>{l.score}</strong><small className="muted" style={{display:"block",fontSize:10}}>SCORE</small></div>
+          </div>
+          <div style={{display:"flex",gap:8,flexWrap:"wrap",fontSize:12}}>
+            <span className="badge" style={{padding:"6px 9px",borderRadius:999}}>{l.hasSite ? "✓ Site encontrado" : "⚡ Sem site"}</span>
+            {l.phone && <span className="badge" style={{padding:"6px 9px",borderRadius:999}}>☎ {l.phone}</span>}
+          </div>
+          <div style={{display:"flex",gap:8,marginTop:"auto"}}>
+            <button className="secondary" style={{flex:1}} onClick={async()=>{const supabase=createClient() as any;const {data:userData}=await supabase.auth.getUser();if(!userData.user)return;const {error}=await supabase.from("pipeline_items").upsert({user_id:userData.user.id,lead_id:l.id,stage:"selected"},{onConflict:"user_id,lead_id"});if(error){notify("Não foi possível adicionar ao CRM.");return;}setPipeline(prev=>({...prev,[l.id]:"Selecionado"}));notify("Lead adicionado à prospecção.");}}><Target size={14}/> Adicionar ao CRM</button>
+            {l.phone ? <a className="icon-action" href={whatsappUrl(l.phone,commercialMessage(l.name))} target="_blank" rel="noopener noreferrer" aria-label={`Abrir WhatsApp para ${l.name}`}><MessageCircle size={15}/></a> : <button className="icon-action" disabled><MessageCircle size={15}/></button>}
+          </div>
+        </article>)}
+      </div>
+    </section></>}
   </>;
 }
 function LeadMap({leads,notify}:{leads:LeadRow[];notify:(s:string)=>void}) {
