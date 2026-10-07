@@ -141,7 +141,17 @@ export async function POST(request:Request) {
       const names = new Set<string>();
       for(const element of (Array.isArray(cityJson.elements) ? cityJson.elements : [])){
         const tags=element?.tags || {};
-        const city=String(tags["addr:city"] || tags["addr:municipality"] || "").trim();
+        const city=String(
+          tags["addr:city"] ||
+          tags["addr:municipality"] ||
+          tags["addr:town"] ||
+          tags["addr:village"] ||
+          tags["addr:place"] ||
+          tags["is_in:city"] ||
+          tags["is_in:town"] ||
+          tags["is_in:municipality"] ||
+          ""
+        ).trim();
         if(city) names.add(city);
       }
       return NextResponse.json({
