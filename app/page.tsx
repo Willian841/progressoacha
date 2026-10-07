@@ -275,6 +275,7 @@ function Leads({leads,setLeads,query,setQuery,notify,searchUsage,setSearchUsage,
  const [cityFilter,setCityFilter]=useState("");
  const [siteFilter,setSiteFilter]=useState("all");
  const [scoreFilter,setScoreFilter]=useState("0");
+ const [searching,setSearching]=useState(false);
  const filtered=leads.filter(l=>{
    return (!segmentFilter || l.segment.toLowerCase().includes(segmentFilter.toLowerCase()))
      && (!stateFilter || l.state.toLowerCase()===stateFilter.toLowerCase())
@@ -289,6 +290,8 @@ function Leads({leads,setLeads,query,setQuery,notify,searchUsage,setSearchUsage,
      return;
    }
    try{
+     setSearching(true);
+     setLeads([]);
      const response = await fetch("/api/leads/search",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({query:cleanQuery,segment:segmentFilter.trim(),city:cityFilter.trim(),state:stateFilter.trim()})});
      const payload = await response.json();
      if(!response.ok){notify(payload.error || "Não foi possível realizar a busca.");return;}
@@ -298,9 +301,10 @@ function Leads({leads,setLeads,query,setQuery,notify,searchUsage,setSearchUsage,
      if(usage) setSearchUsage({used:usage.used,limit:usage.usage_limit});
      notify(`Busca real concluída: ${rows.length} empresas encontradas.`);
    }catch(error){console.error(error);notify("Não foi possível realizar a busca agora.");}
+   finally { setSearching(false); }
  };
  return <><Header eyebrow="PROSPECÇÃO INTELIGENTE" title="Buscar Leads" text="Encontre empresas, identifique oportunidades e comece a conversa." action={<div className="usage"><span>Buscas</span><b>{searchUsage.used} / {searchUsage.limit === null ? "∞" : searchUsage.limit}</b><div><i style={{width:`${searchUsage.limit===null?100:Math.min(100,(searchUsage.used/Math.max(searchUsage.limit,1))*100)}%`}}/></div></div>}/>
- <div className="searchbar"><div><Search size={18}/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Ex.: restaurantes em Salvador..."/><kbd>⌘ K</kbd></div><button className={advanced?"secondary active-filter":"secondary"} onClick={()=>setAdvanced(v=>!v)}><Settings size={16}/> Filtros avançados</button><button className="primary" onClick={runSearch}>Buscar</button></div>
+ <div className="searchbar"><div><Search size={18}/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Ex.: restaurantes em Salvador..."/><kbd>⌘ K</kbd></div><button className={advanced?"secondary active-filter":"secondary"} onClick={()=>setAdvanced(v=>!v)}><Settings size={16}/> Filtros avançados</button><button className="primary" onClick={runSearch} disabled={searching}>{searching?"Buscando...":"Buscar"}</button></div>
  {advanced && <div className="advanced-filters"><input value={segmentFilter} onChange={e=>setSegmentFilter(e.target.value)} placeholder="Segmento"/><input value={stateFilter} onChange={e=>setStateFilter(e.target.value.toUpperCase())} placeholder="UF"/><input value={cityFilter} onChange={e=>setCityFilter(e.target.value)} placeholder="Cidade"/><select value={siteFilter} onChange={e=>setSiteFilter(e.target.value)}><option value="all">Qualquer site</option><option value="without">Sem site</option><option value="with">Com site</option></select><select value={scoreFilter} onChange={e=>setScoreFilter(e.target.value)}><option value="0">Qualquer score</option><option value="80">Score 80+</option><option value="90">Score 90+</option></select></div>}
  <div className="metrics"><div><b>{filtered.length}</b><span>Empresas encontradas</span></div><div><b className="green">{filtered.filter(l=>!l.hasSite).length}</b><span>Sem site</span></div><div><b>{filtered.filter(l=>l.hasSite).length}</b><span>Com site</span></div><div><b className="cyan">{filtered.filter(l=>l.score>=80).length}</b><span>Oportunidades altas</span></div></div>
  <LeadMap leads={filtered} notify={notify}/>
