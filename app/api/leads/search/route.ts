@@ -115,21 +115,21 @@ export async function POST(request:Request) {
     const stateIso = STATE_ISO[state];
     const stateName = Object.entries(STATE_NAMES).find(([,code]) => code === state)?.[0] || "";
     const stateScope = stateIso
-      ? 'area["name"~"^' + escapeRegex(stateName) + '$",i]["boundary"="administrative"]["admin_level"="4"]->.stateArea;'
+      ? 'area["ISO3166-2"="' + stateIso + '"]["boundary"="administrative"]["admin_level"="4"]->.stateArea;'
       : 'area["ISO3166-1"="BR"]->.countryArea;';
     const searchScope = cityName
       ? (stateIso
           ? 'rel(area.stateArea)["boundary"="administrative"]["admin_level"~"6|7|8"]["name"~"^' + escapeRegex(cityName) + '$",i]->.cityRel;.cityRel map_to_area -> .searchArea;'
           : 'area["name"~"^' + escapeRegex(cityName) + '$",i]["boundary"="administrative"]["admin_level"~"6|7|8"]->.searchArea;')
       : (stateIso ? 'area.stateArea->.searchArea;' : 'area.countryArea->.searchArea;');
-    const q = "[out:json][timeout:15];" + stateScope + searchScope + "nwr(area.searchArea)" + filter + ";out center tags;";
+    const q = "[out:json][timeout:20];" + stateScope + searchScope + "nwr(area.searchArea)" + filter + ";out center tags;";
 
     let json:any = null;
     let lastStatus = 503;
     for (const endpoint of OVERPASS_URLS) {
       try {
         const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 18000);
+        const timeout = setTimeout(() => controller.abort(), 23000);
         const response = await fetch(endpoint,{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded","User-Agent":"ProgressoAcha/1.0"},body:new URLSearchParams({data:q}),cache:"no-store",signal:controller.signal});
         clearTimeout(timeout);
         lastStatus = response.status;
