@@ -22,7 +22,6 @@ const STATE_NAMES: Record<string, string> = {
 };
 
 function escapeRegex(value:string) { return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); }
-function escapeRegex(value:string) { return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); }
 function inferSegment(query:string) {
   const q = query.toLowerCase();
   if (/(restaurante|restaurantes|pizzaria)/.test(q)) return "restaurante";
