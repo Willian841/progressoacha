@@ -89,7 +89,16 @@ export async function POST(request:Request) {
     const segment = (String(body.segment || "").trim() || inferSegment(query)).slice(0,MAX_SEGMENT_LENGTH);
     const inferredState = (String(body.state || "").trim().toUpperCase() || inferState(query)).slice(0,MAX_STATE_LENGTH);
     const inferredCity = String(body.city || "").trim() || inferCity(query);
-    const city = (inferredState && Object.entries(STATE_NAMES).some(([name, code]) => code === inferredState && normalizeText(name) === normalizeText(inferredCity)) ? "" : inferredCity).slice(0,MAX_CITY_LENGTH);
+    const normalizedInferredCity = normalizeText(inferredCity);
+    // Alguns nomes são simultaneamente estado e cidade. Em uma busca
+    // natural como "restaurantes em São Paulo" ou "hotéis no Rio de Janeiro",
+    // priorizamos a cidade; o usuário pode pedir o estado explicitamente
+    // usando "estado de ...".
+    const ambiguousStateCities = new Set(["sao paulo", "rio de janeiro"]);
+    const cityLooksLikeState = inferredState &&
+      Object.entries(STATE_NAMES).some(([name, code]) => code === inferredState && normalizeText(name) === normalizedInferredCity);
+    const explicitStateRequest = /\bestado\s+(?:de|do|da)\s+/i.test(query);
+    const city = ((cityLooksLikeState && !ambiguousStateCities.has(normalizedInferredCity) && !explicitStateRequest) ? "" : inferredCity).slice(0,MAX_CITY_LENGTH);
     const state = inferredState;
     if (!city && !query) return NextResponse.json({error:"Informe uma cidade ou termo de busca."},{status:400});
     const supabase = await createServerSupabaseClient();
