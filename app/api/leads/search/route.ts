@@ -2,8 +2,9 @@ import { NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
 
 const OVERPASS_URLS = [
+  "https://overpass.kumi.systems/api/interpreter",
   "https://overpass-api.de/api/interpreter",
-  "https://overpass.kumi.systems/api/interpreter"
+  "https://overpass.private.coffee/api/interpreter"
 ];
 const MAX_QUERY_LENGTH = 120;
 const MAX_SEGMENT_LENGTH = 60;
@@ -123,7 +124,7 @@ export async function POST(request:Request) {
       for (const endpoint of OVERPASS_URLS) {
         try {
           const controller = new AbortController();
-          const timeout = setTimeout(() => controller.abort(), 23000);
+          const timeout = setTimeout(() => controller.abort(), 16000);
           const response = await fetch(endpoint,{
             method:"POST",
             headers:{"Content-Type":"application/x-www-form-urlencoded","User-Agent":"ProgressoAcha/1.0"},
@@ -254,7 +255,7 @@ export async function POST(request:Request) {
     const target = cityBbox
       ? "nwr(" + cityBbox + ")" + filter
       : "nwr(area.searchArea)" + filter;
-    const q = "[out:json][timeout:20];" + stateScope + searchScope + target + ";out center tags;";
+    const q = "[out:json][timeout:15];" + stateScope + searchScope + target + ";out center tags;";
 
     let json:any = null;
     let lastStatus = 503;
@@ -269,7 +270,7 @@ export async function POST(request:Request) {
           json = await response.json();
           break;
         }
-        if (![429,503,504].includes(response.status)) break;
+        if (![408,429,500,502,503,504].includes(response.status)) break;
       } catch (e) {
         console.error("Overpass endpoint failed", endpoint, e);
       }
