@@ -116,33 +116,36 @@ export async function POST(request:Request) {
       const cityState = String(body.state || "").trim().toUpperCase();
       const citySegment = String(body.segment || "").trim();
       const stateIsoForCities = STATE_ISO[cityState];
-      if (!stateIsoForCities) return NextResponse.json({cities:[]});
+      if (!stateIsoForCities) return NextResponse.json({state:cityState,cities:[]});
       const cityCacheKey = cityState;
       const cachedCities = CITY_DISCOVERY_CACHE.get(cityCacheKey);
-      if (cachedCities) return NextResponse.json({cities:cachedCities});
+      if (cachedCities) return NextResponse.json({state:cityState,cities:cachedCities});
       const stateQuery =
         '[out:json][timeout:20];' +
         'area["ISO3166-2"="' + stateIsoForCities + '"]["boundary"="administrative"]["admin_level"="4"]->.stateArea;' +
         'rel(area.stateArea)["boundary"="administrative"]["admin_level"="8"];out tags;';
       let cityJson:any = null;
-      for (const endpoint of OVERPASS_URLS) {
-        try {
-          const controller = new AbortController();
-          const timeout = setTimeout(() => controller.abort(), 16000);
-          const response = await fetch(endpoint,{
+      const cityController = new AbortController();
+      const cityTimeout = setTimeout(() => cityController.abort(), 12000);
+      try {
+        const response = await Promise.any(OVERPASS_URLS.map(async endpoint => {
+          const res = await fetch(endpoint,{
             method:"POST",
             headers:{"Content-Type":"application/x-www-form-urlencoded","User-Agent":"ProgressoAcha/1.0"},
             body:new URLSearchParams({data:stateQuery}),
             cache:"no-store",
-            signal:controller.signal
+            signal:cityController.signal
           });
-          clearTimeout(timeout);
-          if(response.ok){ cityJson=await response.json(); break; }
-        } catch(error) {
-          console.error("City discovery endpoint failed", endpoint, error);
-        }
+          if(!res.ok) throw new Error(`Overpass ${res.status}`);
+          return res;
+        }));
+        cityJson=await response.json();
+      } catch(error) {
+        console.error("City discovery endpoints failed", error);
+      } finally {
+        clearTimeout(cityTimeout);
       }
-      if(!cityJson) return NextResponse.json({cities:[],warning:"Não foi possível carregar as cidades agora."});
+      if(!cityJson) return NextResponse.json({state:cityState,cities:[],warning:"Não foi possível carregar as cidades agora."});
       const names = new Set<string>();
       for(const element of (Array.isArray(cityJson.elements) ? cityJson.elements : [])){
         const tags=element?.tags || {};
@@ -151,7 +154,7 @@ export async function POST(request:Request) {
       }
       const cities = Array.from(names).sort((a,b)=>a.localeCompare(b,"pt-BR"));
       CITY_DISCOVERY_CACHE.set(cityCacheKey,cities);
-      return NextResponse.json({cities});
+      return NextResponse.json({state:cityState,cities});
     }
 
     const {data:profile,error:profileError} = await supabase.from("profiles").select("plan_code").eq("id",user.id).maybeSingle();
