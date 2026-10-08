@@ -525,6 +525,10 @@ export type Database = {
           search_limit: number
         }[]
       }
+      claim_referral_search_reward: {
+        Args: never
+        Returns: number
+      }
     }
     Enums: {
       [_ in never]: never
