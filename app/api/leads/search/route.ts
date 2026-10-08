@@ -113,50 +113,40 @@ export async function POST(request:Request) {
     // Ela retorna somente municípios onde o OpenStreetMap possui estabelecimentos do segmento.
     if (String(body.mode || "") === "cities") {
       const cityState = String(body.state || "").trim().toUpperCase();
-      const citySegment = String(body.segment || "").trim();
-      const stateIsoForCities = STATE_ISO[cityState];
-      if (!stateIsoForCities) return NextResponse.json({state:cityState,cities:[]});
+      if (!STATE_ISO[cityState]) return NextResponse.json({state:cityState,cities:[]});
+
+      // Descoberta de municípios usa o IBGE, que é muito mais leve e estável
+      // que consultar relações administrativas do Overpass.
       const cityCacheKey = cityState;
       const cachedCities = CITY_DISCOVERY_CACHE.get(cityCacheKey);
       if (cachedCities) return NextResponse.json({state:cityState,cities:cachedCities});
-      const stateQuery =
-        '[out:json][timeout:20];' +
-        'area["ISO3166-2"="' + stateIsoForCities + '"]["boundary"="administrative"]["admin_level"="4"]->.stateArea;' +
-        'rel(area.stateArea)["boundary"="administrative"]["admin_level"="8"];out tags;';
-      let cityJson:any = null;
-      const cityController = new AbortController();
-      const cityTimeout = setTimeout(() => cityController.abort(), 12000);
-      try {
-        const response = await Promise.any(OVERPASS_URLS.map(async endpoint => {
-          const res = await fetch(endpoint,{
-            method:"POST",
-            headers:{"Content-Type":"application/x-www-form-urlencoded","User-Agent":"ProgressoAcha/1.0"},
-            body:new URLSearchParams({data:stateQuery}),
-            cache:"no-store",
-            signal:cityController.signal
-          });
-          if(!res.ok) throw new Error(`Overpass ${res.status}`);
-          return res;
-        }));
-        cityJson=await response.json();
-      } catch(error) {
-        console.error("City discovery endpoints failed", error);
-      } finally {
-        clearTimeout(cityTimeout);
-      }
-      if(!cityJson) return NextResponse.json({state:cityState,cities:[],warning:"Não foi possível carregar as cidades agora."});
-      const names = new Set<string>();
-      for(const element of (Array.isArray(cityJson.elements) ? cityJson.elements : [])){
-        const tags=element?.tags || {};
-        const city=String(tags.name || tags["name:pt"] || "").trim();
-        if(city) names.add(city);
-      }
-      const cities = Array.from(names).sort((a,b)=>a.localeCompare(b,"pt-BR"));
-      CITY_DISCOVERY_CACHE.set(cityCacheKey,cities);
-      return NextResponse.json({state:cityState,cities});
-    }
 
-    if (!city && !query) return NextResponse.json({error:"Informe uma cidade ou termo de busca."},{status:400});
+      try {
+        const response = await fetch(
+          `https://servicodados.ibge.gov.br/api/v1/localidades/estados/${cityState}/municipios`,
+          {
+            headers: { "Accept": "application/json", "User-Agent": "ProgressoAcha/1.0" },
+            cache: "no-store",
+            signal: AbortSignal.timeout(7000)
+          }
+        );
+        if (!response.ok) throw new Error(`IBGE ${response.status}`);
+        const data = await response.json();
+        const cities = Array.from(new Set(
+          (Array.isArray(data) ? data : [])
+            .map((item:any) => String(item?.nome || "").trim())
+            .filter(Boolean)
+        )).sort((a,b)=>a.localeCompare(b,"pt-BR"));
+        CITY_DISCOVERY_CACHE.set(cityCacheKey,cities);
+        return NextResponse.json({state:cityState,cities});
+      } catch (error) {
+        console.error("IBGE city discovery failed", error);
+        return NextResponse.json(
+          {state:cityState,cities:[],warning:"Não foi possível carregar as cidades agora."},
+          {status:200}
+        );
+      }
+    }
 
     const {data:profile,error:profileError} = await supabase.from("profiles").select("plan_code").eq("id",user.id).maybeSingle();
     if(profileError) return NextResponse.json({error:"Não foi possível validar o plano."},{status:500});
