@@ -70,3 +70,4 @@ As integrações externas não devem usar chaves secretas no cliente. Segredos d
 - Configure as URLs de redirecionamento e recuperação de senha no Supabase Auth.
 - Nunca coloque chaves secretas de pagamento, IA ou provedores de leads em variáveis `NEXT_PUBLIC_*`.
 - Só habilite a gateway depois que o provedor e os webhooks reais estiverem configurados.
+
