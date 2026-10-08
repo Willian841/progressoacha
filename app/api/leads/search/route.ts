@@ -105,7 +105,6 @@ export async function POST(request:Request) {
     const explicitStateRequest = /\bestado\s+(?:de|do|da)\s+/i.test(query);
     const city = ((cityLooksLikeState && !ambiguousStateCities.has(normalizedInferredCity) && !explicitStateRequest) ? "" : inferredCity).slice(0,MAX_CITY_LENGTH);
     const state = inferredState;
-    if (!city && !query) return NextResponse.json({error:"Informe uma cidade ou termo de busca."},{status:400});
     const supabase = await createServerSupabaseClient();
     const {data:{user}} = await supabase.auth.getUser();
     if (!user) return NextResponse.json({error:"Não autenticado."},{status:401});
