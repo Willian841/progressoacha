@@ -307,29 +307,38 @@ function Leads({leads,setLeads,query,setQuery,notify,searchUsage,setSearchUsage,
     if(!stateFilter){
       setCityOptions([]);
       setCityFilter("");
+      setCitiesLoading(false);
       return;
     }
-    let cancelled=false;
+    // A lista de municípios é independente da busca de leads. Carregamos
+    // diretamente do IBGE no navegador para não acionar a rota de prospecção
+    // nem misturar requisições quando o usuário troca de estado.
+    const controller=new AbortController();
+    const requestedState=stateFilter;
+    setCityOptions([]);
     setCitiesLoading(true);
-    fetch("/api/leads/search",{
-      method:"POST",
-      headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({mode:"cities",state:stateFilter,segment:segmentFilter})
+    fetch(`https://servicodados.ibge.gov.br/api/v1/localidades/estados/${requestedState}/municipios`,{
+      headers:{"Accept":"application/json"},
+      signal:controller.signal
     })
-      .then(res=>res.ok?res.json():{cities:[]})
-      .then((payload:any)=>{
-        if(cancelled) return;
-        if (payload?.state && payload.state !== stateFilter) return;
-        const discovered=Array.isArray(payload.cities) ? payload.cities : [];
-        // Nunca carregue cidades do estado anterior. Preserve somente a cidade
-        // já escolhida pela busca em destaque, se houver.
-        const selected=cityFilter.trim();
-        setCityOptions(Array.from(new Set([...(selected ? [selected] : []),...discovered])));
+      .then(res=>res.ok?res.json():Promise.reject(new Error(`IBGE ${res.status}`)))
+      .then((data:any)=>{
+        if(controller.signal.aborted) return;
+        const discovered=Array.from(new Set(
+          (Array.isArray(data)?data:[])
+            .map((item:any)=>String(item?.nome||"").trim())
+            .filter(Boolean)
+        )).sort((a,b)=>a.localeCompare(b,"pt-BR"));
+        setCityOptions(discovered);
       })
-      .catch(()=>{if(!cancelled)setCityOptions([]);})
-      .finally(()=>{if(!cancelled)setCitiesLoading(false);});
-    return ()=>{cancelled=true;};
-  },[stateFilter,segmentFilter]);
+      .catch(error=>{
+        if(error?.name!=="AbortError") setCityOptions([]);
+      })
+      .finally(()=>{
+        if(!controller.signal.aborted) setCitiesLoading(false);
+      });
+    return ()=>controller.abort();
+  },[stateFilter]);
 
   const segments=["Restaurantes","Dentistas","Advogados","Academias","Farmácias","Hotéis","Clínicas","Salões de beleza","Imobiliárias","Oficinas","Lojas","Outros"];
   const states=[["AC","Acre"],["AL","Alagoas"],["AP","Amapá"],["AM","Amazonas"],["BA","Bahia"],["CE","Ceará"],["DF","Distrito Federal"],["ES","Espírito Santo"],["GO","Goiás"],["MA","Maranhão"],["MT","Mato Grosso"],["MS","Mato Grosso do Sul"],["MG","Minas Gerais"],["PA","Pará"],["PB","Paraíba"],["PR","Paraná"],["PE","Pernambuco"],["PI","Piauí"],["RJ","Rio de Janeiro"],["RN","Rio Grande do Norte"],["RS","Rio Grande do Sul"],["RO","Rondônia"],["RR","Roraima"],["SC","Santa Catarina"],["SP","São Paulo"],["SE","Sergipe"],["TO","Tocantins"]];
