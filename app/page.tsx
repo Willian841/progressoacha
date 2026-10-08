@@ -9,9 +9,12 @@ import {
 } from "lucide-react";
 
 function whatsappUrl(phone:string, message:string) {
-  const digits = phone.replace(/\D/g, "");
-  const normalized = digits.startsWith("55") ? digits : `55${digits}`;
-  return `https://wa.me/${normalized}?text=${encodeURIComponent(message)}`;
+  const firstNumber = String(phone || "").split(/[;,/|]|(?:\s+ou\s+)/i)[0] || "";
+  let digits = firstNumber.replace(/\D/g, "");
+  if (digits.startsWith("00")) digits = digits.slice(2);
+  if (digits.startsWith("0")) digits = digits.slice(1);
+  if (!digits.startsWith("55")) digits = `55${digits}`;
+  return `https://api.whatsapp.com/send?phone=${digits}&text=${encodeURIComponent(message)}`;
 }
 
 function commercialMessage(name:string) {
@@ -316,13 +319,12 @@ function Leads({leads,setLeads,query,setQuery,notify,searchUsage,setSearchUsage,
       .then(res=>res.ok?res.json():{cities:[]})
       .then((payload:any)=>{
         if(cancelled) return;
+        if (payload?.state && payload.state !== stateFilter) return;
         const discovered=Array.isArray(payload.cities) ? payload.cities : [];
-        // Preserve a city selected by a popular search even if OSM does not
-        // return that municipality in the discovery query for the segment.
-        setCityOptions(prev=>{
-          const selected=cityFilter.trim();
-          return Array.from(new Set([...(selected ? [selected] : []),...discovered,...prev]));
-        });
+        // Nunca carregue cidades do estado anterior. Preserve somente a cidade
+        // já escolhida pela busca em destaque, se houver.
+        const selected=cityFilter.trim();
+        setCityOptions(Array.from(new Set([...(selected ? [selected] : []),...discovered])));
       })
       .catch(()=>{if(!cancelled)setCityOptions([]);})
       .finally(()=>{if(!cancelled)setCitiesLoading(false);});
