@@ -117,14 +117,13 @@ export async function POST(request:Request) {
       const citySegment = String(body.segment || "").trim();
       const stateIsoForCities = STATE_ISO[cityState];
       if (!stateIsoForCities) return NextResponse.json({cities:[]});
-      const cityFilter = tagFilter(citySegment);
-      const cityCacheKey = `${cityState}:${normalizeText(citySegment)}`;
+      const cityCacheKey = cityState;
       const cachedCities = CITY_DISCOVERY_CACHE.get(cityCacheKey);
       if (cachedCities) return NextResponse.json({cities:cachedCities});
       const stateQuery =
         '[out:json][timeout:20];' +
         'area["ISO3166-2"="' + stateIsoForCities + '"]["boundary"="administrative"]["admin_level"="4"]->.stateArea;' +
-        'nwr(area.stateArea)' + cityFilter + ';out center tags;';
+        'rel(area.stateArea)["boundary"="administrative"]["admin_level"="8"];out tags;';
       let cityJson:any = null;
       for (const endpoint of OVERPASS_URLS) {
         try {
@@ -147,17 +146,7 @@ export async function POST(request:Request) {
       const names = new Set<string>();
       for(const element of (Array.isArray(cityJson.elements) ? cityJson.elements : [])){
         const tags=element?.tags || {};
-        const city=String(
-          tags["addr:city"] ||
-          tags["addr:municipality"] ||
-          tags["addr:town"] ||
-          tags["addr:village"] ||
-          tags["addr:place"] ||
-          tags["is_in:city"] ||
-          tags["is_in:town"] ||
-          tags["is_in:municipality"] ||
-          ""
-        ).trim();
+        const city=String(tags.name || tags["name:pt"] || "").trim();
         if(city) names.add(city);
       }
       const cities = Array.from(names).sort((a,b)=>a.localeCompare(b,"pt-BR"));
