@@ -156,6 +156,8 @@ export async function POST(request:Request) {
       return NextResponse.json({state:cityState,cities});
     }
 
+    if (!city && !query) return NextResponse.json({error:"Informe uma cidade ou termo de busca."},{status:400});
+
     const {data:profile,error:profileError} = await supabase.from("profiles").select("plan_code").eq("id",user.id).maybeSingle();
     if(profileError) return NextResponse.json({error:"Não foi possível validar o plano."},{status:500});
     const {data:limits,error:limitsError} = await supabase.rpc("plan_limits",{p_plan:profile?.plan_code || "free"});
