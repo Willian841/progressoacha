@@ -170,7 +170,6 @@ export async function POST(request:Request) {
     const {data:limits,error:limitsError} = await supabase.rpc("plan_limits",{p_plan:profile?.plan_code || "free"});
     if(limitsError || !limits?.[0]) return NextResponse.json({error:"Não foi possível validar os limites do plano."},{status:500});
     const companiesPerSearch = Number(limits[0].companies_per_search);
-    const searchLimit = limits[0].search_limit == null ? null : Number(limits[0].search_limit);
     if(!Number.isFinite(companiesPerSearch) || companiesPerSearch < 1) return NextResponse.json({error:"Limite de empresas por busca inválido."},{status:500});
     const cityName = city;
     // Quando a cidade foi escolhida pela interface, ela tem prioridade absoluta.
@@ -184,7 +183,7 @@ export async function POST(request:Request) {
     if (cityName) {
       const cityCacheKey = `${state}:${normalizeText(cityName)}`;
       cityBbox = CITY_BBOX_CACHE.get(cityCacheKey) || null;
-      try {
+      if (!cityBbox) try {
         const geoParams = new URLSearchParams({
           city: cityName,
           state: stateNameForCode(state),
