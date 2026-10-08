@@ -10,6 +10,8 @@ const MAX_QUERY_LENGTH = 120;
 const MAX_SEGMENT_LENGTH = 60;
 const MAX_CITY_LENGTH = 80;
 const MAX_STATE_LENGTH = 2;
+const CITY_BBOX_CACHE = new Map<string,string>();
+const CITY_DISCOVERY_CACHE = new Map<string,string[]>();
 
 const STATE_NAMES: Record<string, string> = {
   acre:"AC", alagoas:"AL", amapá:"AP", amapa:"AP", amazonas:"AM", bahia:"BA",
@@ -116,6 +118,9 @@ export async function POST(request:Request) {
       const stateIsoForCities = STATE_ISO[cityState];
       if (!stateIsoForCities) return NextResponse.json({cities:[]});
       const cityFilter = tagFilter(citySegment);
+      const cityCacheKey = `${cityState}:${normalizeText(citySegment)}`;
+      const cachedCities = CITY_DISCOVERY_CACHE.get(cityCacheKey);
+      if (cachedCities) return NextResponse.json({cities:cachedCities});
       const stateQuery =
         '[out:json][timeout:20];' +
         'area["ISO3166-2"="' + stateIsoForCities + '"]["boundary"="administrative"]["admin_level"="4"]->.stateArea;' +
@@ -155,9 +160,9 @@ export async function POST(request:Request) {
         ).trim();
         if(city) names.add(city);
       }
-      return NextResponse.json({
-        cities:Array.from(names).sort((a,b)=>a.localeCompare(b,"pt-BR"))
-      });
+      const cities = Array.from(names).sort((a,b)=>a.localeCompare(b,"pt-BR"));
+      CITY_DISCOVERY_CACHE.set(cityCacheKey,cities);
+      return NextResponse.json({cities});
     }
 
     const {data:profile,error:profileError} = await supabase.from("profiles").select("plan_code").eq("id",user.id).maybeSingle();
@@ -167,15 +172,6 @@ export async function POST(request:Request) {
     const companiesPerSearch = Number(limits[0].companies_per_search);
     const searchLimit = limits[0].search_limit == null ? null : Number(limits[0].search_limit);
     if(!Number.isFinite(companiesPerSearch) || companiesPerSearch < 1) return NextResponse.json({error:"Limite de empresas por busca inválido."},{status:500});
-    if(searchLimit !== null) {
-      const monthStart = new Date();
-      monthStart.setUTCDate(1);
-      monthStart.setUTCHours(0,0,0,0);
-      const {data:usageRow,error:usageReadError} = await supabase.from("usage_monthly").select("search_count").eq("user_id",user.id).eq("month_start",monthStart.toISOString().slice(0,10)).maybeSingle();
-      if(usageReadError) return NextResponse.json({error:"Não foi possível verificar o uso do plano."},{status:500});
-      if(Number(usageRow?.search_count || 0) >= searchLimit) return NextResponse.json({error:`Seu plano atingiu o limite de ${searchLimit} buscas neste período. Faça upgrade para continuar.`},{status:402});
-    }
-
     const cityName = city;
     // Quando a cidade foi escolhida pela interface, ela tem prioridade absoluta.
     // Nunca reutilizamos resultados antigos de outro município.
@@ -186,6 +182,8 @@ export async function POST(request:Request) {
     // administrativas do Overpass, que varia entre municípios.
     let cityBbox: string | null = null;
     if (cityName) {
+      const cityCacheKey = `${state}:${normalizeText(cityName)}`;
+      cityBbox = CITY_BBOX_CACHE.get(cityCacheKey) || null;
       try {
         const geoParams = new URLSearchParams({
           city: cityName,
@@ -219,6 +217,7 @@ export async function POST(request:Request) {
           const box = match?.boundingbox;
           if (Array.isArray(box) && box.length === 4) {
             cityBbox = [box[0], box[2], box[1], box[3]].join(",");
+            CITY_BBOX_CACHE.set(cityCacheKey, cityBbox);
           }
         }
       } catch (error) {
@@ -259,23 +258,24 @@ export async function POST(request:Request) {
 
     let json:any = null;
     let lastStatus = 503;
-    for (const endpoint of OVERPASS_URLS) {
-      try {
-        const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 23000);
-        const response = await fetch(endpoint,{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded","User-Agent":"ProgressoAcha/1.0"},body:new URLSearchParams({data:q}),cache:"no-store",signal:controller.signal});
-        clearTimeout(timeout);
-        lastStatus = response.status;
-        if (response.ok) {
-          json = await response.json();
-          break;
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 14000);
+    try {
+      const response = await Promise.any(OVERPASS_URLS.map(async endpoint => {
+        const res = await fetch(endpoint,{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded","User-Agent":"ProgressoAcha/1.0"},body:new URLSearchParams({data:q}),cache:"no-store",signal:controller.signal});
+        if (!res.ok) {
+          lastStatus = res.status;
+          throw new Error(`Overpass ${res.status}`);
         }
-        if (![408,429,500,502,503,504].includes(response.status)) break;
-      } catch (e) {
-        console.error("Overpass endpoint failed", endpoint, e);
-      }
+        return res;
+      }));
+      json = await response.json();
+    } catch (e) {
+      console.error("Overpass endpoints failed", e);
+    } finally {
+      clearTimeout(timeout);
     }
-    if (!json) return NextResponse.json({error:"A fonte de dados está temporariamente indisponível. Tente novamente em alguns segundos."},{status:lastStatus >= 500 ? 503 : 503});
+    if (!json) return NextResponse.json({error:"A fonte de dados está temporariamente indisponível. Tente novamente em alguns segundos."},{status:503});
     const elements = Array.isArray(json.elements) ? json.elements : [];
     const rows = elements.map((e:any)=>{
       const t=e.tags||{}; const lat=e.lat ?? e.center?.lat ?? null; const lon=e.lon ?? e.center?.lon ?? null;
