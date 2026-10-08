@@ -272,8 +272,7 @@ function ReferralCard({notify}:{notify:(s:string)=>void}) {
   const [code,setCode]=useState("");
   const [count,setCount]=useState(0);
   const [earned,setEarned]=useState(0);
-  const [origin,setOrigin]=useState("");
-  useEffect(()=>{ setOrigin(window.location.origin); (async()=>{
+  useEffect(()=>{ (async()=>{
     const supabase=createClient() as any;
     const {data:userData}=await supabase.auth.getUser();
     if(!userData.user)return;
@@ -286,7 +285,7 @@ function ReferralCard({notify}:{notify:(s:string)=>void}) {
     setCount(rows.length);
     setEarned(rows.reduce((sum:number,r:any)=>sum+(r.signup_reward_granted?10:0)+(r.paid_reward_granted?10:0),0));
   })();},[]);
-  const link=code && origin ? origin+"/cadastro?ref="+encodeURIComponent(code) : "";
+  const link=code ? "https://progressoacha.vercel.app/cadastro?ref="+encodeURIComponent(code) : "";
   const copy=async()=>{if(!link)return;try{await navigator.clipboard.writeText(link);notify("Link de convite copiado.");}catch{notify("Não foi possível copiar o link.");}};
   return <section className="panel"><div className="panelhead"><div><span className="eyebrow">INDIQUE E GANHE</span><h2>Convide amigos e ganhe buscas</h2><p>+10 buscas na primeira busca do convidado e +10 se ele assinar um plano pago.</p></div><span className="admin-badge">ATÉ +20</span></div><div className="form-actions" style={{display:"flex",gap:"8px",flexWrap:"wrap"}}><input readOnly value={link} placeholder="Gerando seu link..." style={{flex:"1 1 280px"}}/><button className="primary" onClick={copy} disabled={!link}>Copiar link</button></div><div className="settings-note" style={{marginTop:"10px"}}>{count} convite{count===1?"":"s"} registrado{count===1?"":"s"} · {earned} buscas ganhas</div></section>;
 }
