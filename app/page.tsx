@@ -314,7 +314,6 @@ function Leads({leads,setLeads,query,setQuery,notify,searchUsage,setSearchUsage,
     // diretamente do IBGE no navegador para não acionar a rota de prospecção
     // nem misturar requisições quando o usuário troca de estado.
     const controller=new AbortController();
-    const requestedState=stateFilter;
     setCityOptions([]);
     setCitiesLoading(true);
     fetch(`https://servicodados.ibge.gov.br/api/v1/localidades/estados/${requestedState}/municipios`,{
@@ -382,10 +381,20 @@ function Leads({leads,setLeads,query,setQuery,notify,searchUsage,setSearchUsage,
         <label className="field-label">Segmento<select value={segmentFilter} onChange={e=>setSegmentFilter(e.target.value)}><option value="">Todos os segmentos</option>{segments.map(s=><option key={s} value={s}>{s}</option>)}</select></label>
         <label className="field-label">Estado / Região<select value={stateFilter} onChange={e=>{setStateFilter(e.target.value);setCityFilter("");}}><option value="">Todos os estados</option>{states.map(([uf,name])=><option key={uf} value={uf}>{name} ({uf})</option>)}</select></label>
         <label className="field-label">Cidade
-          <select value={cityFilter} onChange={e=>setCityFilter(e.target.value)} disabled={!stateFilter || citiesLoading}>
-            <option value="">{!stateFilter ? "Selecione o estado primeiro" : citiesLoading ? "Carregando cidades..." : "Selecione a cidade"}</option>
-            {cityOptions.map(city=><option key={city} value={city}>{city}</option>)}
-          </select>
+          <input
+            value={cityFilter}
+            onChange={e=>setCityFilter(e.target.value)}
+            disabled={!stateFilter || citiesLoading}
+            list="progresso-city-options"
+            placeholder={!stateFilter ? "Selecione o estado primeiro" : citiesLoading ? "Carregando cidades..." : "Digite ou escolha a cidade"}
+            autoComplete="off"
+          />
+          <datalist id="progresso-city-options">
+            {cityOptions
+              .filter(city=>!cityFilter.trim() || city.toLowerCase().includes(cityFilter.trim().toLowerCase()))
+              .slice(0,80)
+              .map(city=><option key={city} value={city}/>)}
+          </datalist>
         </label>
         <label className="field-label">Área<select value={areaFilter} onChange={e=>setAreaFilter(e.target.value)}><option value="city">Cidade inteira</option><option value="region">Estado inteiro</option></select></label>
         <button className="primary" style={{gridColumn:"1 / -1",justifySelf:"start",marginTop:4}} onClick={runSearch} disabled={searching}>{searching?"Buscando...":"Buscar oportunidades"}</button>
