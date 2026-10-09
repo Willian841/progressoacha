@@ -299,6 +299,8 @@ function Leads({leads,setLeads,query,setQuery,notify,searchUsage,setSearchUsage,
   const [cityFilter,setCityFilter]=useState("");
   const [cityOptions,setCityOptions]=useState<string[]>([]);
   const [citiesLoading,setCitiesLoading]=useState(false);
+  const [cityMenuOpen,setCityMenuOpen]=useState(false);
+  const [visibleCityCount,setVisibleCityCount]=useState(50);
   const [areaFilter,setAreaFilter]=useState("city");
   const [searching,setSearching]=useState(false);
   const [hasSearched,setHasSearched]=useState(false);
@@ -380,19 +382,40 @@ function Leads({leads,setLeads,query,setQuery,notify,searchUsage,setSearchUsage,
       <div className="panelhead"><div><h2>O que você procura?</h2><p>Selecione os dados da busca — sem precisar digitar uma pesquisa.</p></div></div>
       <div style={{display:"grid",gridTemplateColumns:"repeat(4,minmax(0,1fr))",gap:12,alignItems:"end",marginTop:18}}>
         <label className="field-label">Segmento<select value={segmentFilter} onChange={e=>setSegmentFilter(e.target.value)}><option value="">Todos os segmentos</option>{segments.map(s=><option key={s} value={s}>{s}</option>)}</select></label>
-        <label className="field-label">Estado / Região<select value={stateFilter} onChange={e=>{setStateFilter(e.target.value);setCityFilter("");}}><option value="">Todos os estados</option>{states.map(([uf,name])=><option key={uf} value={uf}>{name} ({uf})</option>)}</select></label>
-        <label className="field-label">Cidade
+        <label className="field-label">Estado / Região<select value={stateFilter} onChange={e=>{setStateFilter(e.target.value);setCityFilter("");setCityMenuOpen(false);setVisibleCityCount(50);}}><option value="">Todos os estados</option>{states.map(([uf,name])=><option key={uf} value={uf}>{name} ({uf})</option>)}</select></label>
+        <div className="field-label" style={{position:"relative"}}>
+          <label htmlFor="lead-city">Cidade</label>
           <input
+            id="lead-city"
             value={cityFilter}
-            onChange={e=>setCityFilter(e.target.value)}
+            onFocus={()=>setCityMenuOpen(Boolean(stateFilter) && !citiesLoading)}
+            onChange={e=>{setCityFilter(e.target.value);setVisibleCityCount(50);setCityMenuOpen(true);}}
             disabled={!stateFilter || citiesLoading}
-            placeholder={!stateFilter ? "Selecione o estado primeiro" : citiesLoading ? "Carregando cidades..." : "Digite o nome da cidade"}
+            placeholder={!stateFilter ? "Selecione o estado primeiro" : citiesLoading ? "Carregando cidades..." : "Escolha ou pesquise uma cidade"}
             autoComplete="off"
+            aria-expanded={cityMenuOpen}
+            aria-controls="lead-city-options"
           />
-          {stateFilter && !citiesLoading && cityFilter.trim() && !cityOptions.some(city=>city.toLowerCase()===cityFilter.trim().toLowerCase()) && (
-            <small className="muted" style={{display:"block",marginTop:6}}>Digite o nome exato do município para a busca.</small>
+          {cityMenuOpen && stateFilter && !citiesLoading && (
+            <div
+              id="lead-city-options"
+              role="listbox"
+              aria-label="Cidades disponíveis"
+              onScroll={e=>{const el=e.currentTarget;const matching=cityOptions.filter(city=>!cityFilter.trim()||city.toLocaleLowerCase("pt-BR").includes(cityFilter.trim().toLocaleLowerCase("pt-BR")));if(el.scrollTop+el.clientHeight>=el.scrollHeight-24)setVisibleCityCount(n=>Math.min(n+50,matching.length));}}
+              style={{position:"absolute",zIndex:30,top:"100%",left:0,right:0,maxHeight:240,overflowY:"auto",background:"var(--panel, #10151f)",border:"1px solid var(--line)",borderRadius:10,boxShadow:"0 12px 28px rgba(0,0,0,.28)",padding:4}}
+            >
+              {cityOptions
+                .filter(city=>!cityFilter.trim()||city.toLocaleLowerCase("pt-BR").includes(cityFilter.trim().toLocaleLowerCase("pt-BR")))
+                .slice(0,visibleCityCount)
+                .map(city=><button type="button" role="option" aria-selected={cityFilter===city} key={city} onClick={()=>{setCityFilter(city);setCityMenuOpen(false);}} style={{display:"block",width:"100%",textAlign:"left",padding:"9px 10px",border:0,borderRadius:7,background:cityFilter===city?"var(--panel-2, #202938)":"transparent",color:"inherit",cursor:"pointer"}}>{city}</button>)}
+              {!cityOptions.length && <div className="muted" style={{padding:10}}>Nenhuma cidade carregada. Tente selecionar o estado novamente.</div>}
+              {cityOptions.filter(city=>!cityFilter.trim()||city.toLocaleLowerCase("pt-BR").includes(cityFilter.trim().toLocaleLowerCase("pt-BR"))).length>visibleCityCount && <div className="muted" style={{padding:"8px 10px",fontSize:11}}>Role para ver mais cidades…</div>}
+            </div>
           )}
-        </label>
+          {stateFilter && !citiesLoading && cityFilter.trim() && !cityOptions.some(city=>city.toLowerCase()===cityFilter.trim().toLowerCase()) && (
+            <small className="muted" style={{display:"block",marginTop:6}}>Escolha uma cidade da lista ou continue digitando para filtrar.</small>
+          )}
+        </div>
         <label className="field-label">Área<select value={areaFilter} onChange={e=>setAreaFilter(e.target.value)}><option value="city">Cidade inteira</option><option value="region">Estado inteiro</option></select></label>
         <button className="primary" style={{gridColumn:"1 / -1",justifySelf:"start",marginTop:4}} onClick={runSearch} disabled={searching}>{searching?"Buscando...":"Buscar oportunidades"}</button>
       </div>
