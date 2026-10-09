@@ -378,13 +378,13 @@ function Leads({leads,setLeads,query,setQuery,notify,searchUsage,setSearchUsage,
   };
 
   return <><Header eyebrow="PROSPECÇÃO INTELIGENTE" title="Encontre seu próximo cliente" text="Escolha o segmento e a região. O Progresso Acha encontra as oportunidades para você." action={<div className="usage"><span>Buscas</span><b>{searchUsage.used} / {searchUsage.limit === null ? "∞" : searchUsage.limit}</b><div><i style={{width:`${searchUsage.limit===null?100:Math.min(100,(searchUsage.used/Math.max(searchUsage.limit,1))*100)}%`}}/></div></div>}/>
-    <section className="panel" style={{marginBottom:18}}>
+    <section className="panel" style={{marginBottom:18,overflow:"visible",position:"relative"}}>
       <div className="panelhead"><div><h2>O que você procura?</h2><p>Selecione os dados da busca — sem precisar digitar uma pesquisa.</p></div></div>
       <div style={{display:"grid",gridTemplateColumns:"repeat(4,minmax(0,1fr))",gap:12,alignItems:"end",marginTop:18}}>
         <label className="field-label">Segmento<select value={segmentFilter} onChange={e=>setSegmentFilter(e.target.value)}><option value="">Todos os segmentos</option>{segments.map(s=><option key={s} value={s}>{s}</option>)}</select></label>
         <label className="field-label">Estado / Região<select value={stateFilter} onChange={e=>{setStateFilter(e.target.value);setCityFilter("");setCityMenuOpen(false);setVisibleCityCount(50);}}><option value="">Todos os estados</option>{states.map(([uf,name])=><option key={uf} value={uf}>{name} ({uf})</option>)}</select></label>
-        <div className="field-label" style={{position:"relative"}}>
-          <label htmlFor="lead-city">Cidade</label>
+        <div className="field-label" style={{position:"relative",display:"grid",gap:6,minWidth:0}}>
+          <label htmlFor="lead-city" style={{display:"block",margin:0}}>Cidade</label>
           <input
             id="lead-city"
             value={cityFilter}
@@ -402,7 +402,7 @@ function Leads({leads,setLeads,query,setQuery,notify,searchUsage,setSearchUsage,
               role="listbox"
               aria-label="Cidades disponíveis"
               onScroll={e=>{const el=e.currentTarget;const matching=cityOptions.filter(city=>!cityFilter.trim()||city.toLocaleLowerCase("pt-BR").includes(cityFilter.trim().toLocaleLowerCase("pt-BR")));if(el.scrollTop+el.clientHeight>=el.scrollHeight-24)setVisibleCityCount(n=>Math.min(n+50,matching.length));}}
-              style={{position:"absolute",zIndex:30,top:"100%",left:0,right:0,maxHeight:240,overflowY:"auto",background:"var(--panel, #10151f)",border:"1px solid var(--line)",borderRadius:10,boxShadow:"0 12px 28px rgba(0,0,0,.28)",padding:4}}
+              style={{position:"absolute",zIndex:1000,top:"calc(100% + 4px)",left:0,right:0,maxHeight:260,overflowY:"auto",overscrollBehavior:"contain",background:"#10151f",border:"1px solid #2a3545",borderRadius:10,boxShadow:"0 16px 36px rgba(0,0,0,.5)",padding:4}}
             >
               {cityOptions
                 .filter(city=>!cityFilter.trim()||city.toLocaleLowerCase("pt-BR").includes(cityFilter.trim().toLocaleLowerCase("pt-BR")))
