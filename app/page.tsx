@@ -392,7 +392,7 @@ function Leads({leads,setLeads,query,setQuery,notify,searchUsage,setSearchUsage,
           {stateFilter && !citiesLoading && cityFilter.trim() && !cityOptions.some(city=>city.toLowerCase()===cityFilter.trim().toLowerCase()) && (
             <small className="muted" style={{display:"block",marginTop:6}}>Digite o nome exato do município para a busca.</small>
           )}
-        </label>>
+        </label>
         <label className="field-label">Área<select value={areaFilter} onChange={e=>setAreaFilter(e.target.value)}><option value="city">Cidade inteira</option><option value="region">Estado inteiro</option></select></label>
         <button className="primary" style={{gridColumn:"1 / -1",justifySelf:"start",marginTop:4}} onClick={runSearch} disabled={searching}>{searching?"Buscando...":"Buscar oportunidades"}</button>
       </div>
